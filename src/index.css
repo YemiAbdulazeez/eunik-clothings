@@ -1,0 +1,157 @@
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-alt: "Outfit", sans-serif;
+  --font-primary: "Figtree", sans-serif;
+  --color-gold: #eeb167;
+  --color-ink: #232323;
+  --color-muted: #828282;
+  --color-paper: #f7f7f7;
+  --color-nero: #1b1b1b;
+  --color-line: #e4e4e4;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-size: 17px;
+  line-height: 32px;
+  color: var(--color-muted);
+  background: #fff;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-alt {
+  font-family: var(--font-alt);
+}
+
+@utility highlight {
+  position: relative;
+  display: inline-block;
+}
+
+.highlight::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background: var(--color-gold);
+  z-index: -1;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out both;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+.product-card:hover .product-overlay {
+  opacity: 1;
+}
+
+.product-card:hover .product-cta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.collection-card:hover img {
+  transform: scale(1.06);
+}
+
+.eunik-os {
+  --radius: 0.75rem;
+  --background: #f7f7f7;
+  --foreground: #232323;
+  --card: #ffffff;
+  --primary: #232323;
+  --primary-foreground: #ffffff;
+  --primary-glow: #4a4a4a;
+  --os-muted: #f7f7f7;
+  --muted-foreground: #828282;
+  --accent: #f4e4c8;
+  --gold: #eeb167;
+  --gold-foreground: #232323;
+  --destructive: #d32f2f;
+  --success: #2e7d32;
+  --border: #e4e4e4;
+  --input: #e4e4e4;
+  --ring: #232323;
+  --sidebar: #232323;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #1b1b1b;
+  --sidebar-primary: #eeb167;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.eunik-os h1,
+.eunik-os h2,
+.eunik-os h3,
+.eunik-os .font-alt {
+  font-family: var(--font-alt);
+}
+
+.os-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.os-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}

@@ -1,0 +1,23 @@
+{
+  "name": "EUNIK Clothings",
+  "short_name": "EUNIK",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#232323",
+  "theme_color": "#eeb167",
+  "description": "Impeccable clothings from Eunik. Ibadan atelier.",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
