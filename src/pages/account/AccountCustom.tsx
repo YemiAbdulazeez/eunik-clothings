@@ -5,7 +5,7 @@ import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inpu
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import { useSession } from "@/context/SessionProvider";
 
 export default function AccountCustom() {
@@ -36,7 +36,7 @@ export default function AccountCustom() {
     <div className="space-y-6">
       <PageHeader
         title="Custom designs"
-        subtitle="Bespoke requests become quotes, then tickets — without leaving your book."
+        subtitle="Send a custom request. When we quote, accept or decline here."
         actions={
           <OsButton variant="gold" onClick={() => setOpen(true)}>
             New request
@@ -86,7 +86,7 @@ export default function AccountCustom() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {(requests ?? []).map((item) => (
-            <SectionCard key={item.id} title={`${item.outfitType} · ${item.colour}`} action={<StatusBadge label={item.status} tone={statusTone(item.status)} />}>
+            <SectionCard key={item.id} title={`${item.outfitType} · ${item.colour}`} action={<StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />}>
               <p className="text-sm">{item.description}</p>
               <p className="mt-2 text-xs">
                 {item.occasion} · needed {item.deliveryDate || "open"} · {item.budget}
@@ -104,7 +104,7 @@ export default function AccountCustom() {
                   {item.number} · {formatNaira(item.totalKobo)}
                 </p>
                 <p className="text-sm">{item.description}</p>
-                <StatusBadge label={item.status} tone={statusTone(item.status)} />
+                <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
               </div>
               {item.status === "sent" ? (
                 <div className="flex flex-wrap gap-2">

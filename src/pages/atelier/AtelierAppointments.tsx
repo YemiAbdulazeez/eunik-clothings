@@ -3,7 +3,7 @@ import { OsButton, PageHeader, SectionCard, StatusBadge } from "@/components/os/
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import { canConfirmAppointments } from "@/lib/rbac";
 
 export default function AtelierAppointments() {
@@ -19,7 +19,7 @@ export default function AtelierAppointments() {
           <SectionCard
             key={row.id}
             title={`${row.customerName} · ${row.service}`}
-            action={<StatusBadge label={row.status} tone={statusTone(row.status)} />}
+            action={<StatusBadge label={statusLabel(row.status)} tone={statusTone(row.status)} />}
           >
             <p className="text-ink">
               {row.date} · {row.time}

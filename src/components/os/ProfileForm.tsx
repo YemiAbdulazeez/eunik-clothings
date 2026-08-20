@@ -5,6 +5,7 @@ import { Field, OsButton, SectionCard, inputClass } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db, type Gender, type PublicUser, type Role } from "@/db/database";
 import { MONTHS } from "@/lib/osNav";
+import { roleLabel } from "@/lib/format";
 
 export type ProfileKind = "client" | "staff" | "admin";
 
@@ -145,10 +146,10 @@ export default function ProfileForm({ user }: { user: PublicUser }) {
               </Field>
               {kind === "admin" ? (
                 <p className="text-xs">
-                  Role on this book: <strong className="capitalize text-ink">{user.role.replaceAll("_", " ")}</strong>
+                  Role: <strong className="text-ink">{roleLabel(user.role)}</strong>
                 </p>
               ) : (
-                <p className="text-xs capitalize">Floor role · {user.role.replaceAll("_", " ")}</p>
+                <p className="text-xs">Floor · {roleLabel(user.role)}</p>
               )}
             </>
           )}

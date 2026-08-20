@@ -7,7 +7,7 @@ export default function StudioCustomers() {
   const { data: customers } = useAsync(() => db.people.customers(), []);
   return (
     <div className="space-y-6">
-      <PageHeader title="Customers" subtitle="Open a dossier for CRM notes, tickets and balances." />
+      <PageHeader title="Customers" subtitle="Open a client book for notes, orders, and balances." />
       <StatCard label="Client books" value={String(customers?.length ?? 0)} />
       {!customers?.length ? (
         <EmptyState title="No clients" text="Checkout will open a book automatically." />

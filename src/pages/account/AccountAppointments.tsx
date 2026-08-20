@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import { useSession } from "@/context/SessionProvider";
 
 export default function AccountAppointments() {
@@ -71,7 +71,7 @@ export default function AccountAppointments() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {(rows ?? []).map((row) => (
-            <SectionCard key={row.id} title={row.service} action={<StatusBadge label={row.status} tone={statusTone(row.status)} />}>
+            <SectionCard key={row.id} title={row.service} action={<StatusBadge label={statusLabel(row.status)} tone={statusTone(row.status)} />}>
               <p className="text-ink">
                 {row.date} · {row.time}
               </p>

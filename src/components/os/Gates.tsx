@@ -32,41 +32,37 @@ import { landingPath } from "@/db/session";
 import { canSeeSection, canUseArea, sectionForPath } from "@/lib/rbac";
 import type { PublicUser as HouseUser } from "@/db/types";
 
-function Splash() {
-  return <div className="eunik-os grid min-h-screen place-items-center text-sm">Opening the house…</div>;
-}
-
 const accountItems = [
-  { to: "/account", label: "Overview", icon: LayoutDashboard },
+  { to: "/account", label: "Home", icon: LayoutDashboard },
   { to: "/account/shop", label: "Shop", icon: ShoppingBag },
   { to: "/account/orders", label: "Orders", icon: Package },
   { to: "/account/custom", label: "Custom", icon: Sparkles },
-  { to: "/account/measurements", label: "Tape", icon: Ruler },
-  { to: "/account/appointments", label: "Book", icon: Calendar },
+  { to: "/account/measurements", label: "Measurements", icon: Ruler },
+  { to: "/account/appointments", label: "Bookings", icon: Calendar },
   { to: "/account/payments", label: "Payments", icon: CreditCard },
   { to: "/account/wishlist", label: "Wishlist", icon: Heart },
   { to: "/account/reviews", label: "Reviews", icon: MessageCircleHeart },
   { to: "/account/journal", label: "Magazine", icon: BookOpen },
-  { to: "/account/support", label: "Support", icon: Headphones },
+  { to: "/account/support", label: "Help", icon: Headphones },
   { to: "/account/profile", label: "Profile", icon: User },
 ];
 
 const studioItems = [
-  { to: "/studio", label: "Overview", icon: LayoutDashboard },
+  { to: "/studio", label: "Home", icon: LayoutDashboard },
   { to: "/studio/orders", label: "Orders", icon: ClipboardList },
   { to: "/studio/products", label: "Products", icon: Shirt },
   { to: "/studio/collections", label: "Collections", icon: Layers },
   { to: "/studio/customers", label: "Clients", icon: Users },
-  { to: "/studio/custom", label: "Requests", icon: Inbox },
+  { to: "/studio/custom", label: "Custom requests", icon: Inbox },
   { to: "/studio/quotes", label: "Quotes", icon: FileText },
-  { to: "/studio/production", label: "Production", icon: Factory },
+  { to: "/studio/production", label: "Floor board", icon: Factory },
   { to: "/studio/payments", label: "Payments", icon: CreditCard },
   { to: "/studio/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/studio/support", label: "Support", icon: Headphones },
   { to: "/studio/content", label: "Content", icon: BookOpen },
   { to: "/studio/events", label: "Events", icon: Calendar },
   { to: "/studio/people", label: "Staff", icon: UserCog },
-  { to: "/studio/appointments", label: "Appointments", icon: Calendar },
+  { to: "/studio/appointments", label: "Bookings", icon: Calendar },
   { to: "/studio/attendance", label: "Attendance", icon: Clock },
   { to: "/studio/settings", label: "Settings", icon: Settings },
 ];
@@ -75,10 +71,14 @@ const atelierItems = [
   { to: "/atelier", label: "My bench", icon: Shirt },
   { to: "/atelier/queue", label: "Queue", icon: ClipboardList },
   { to: "/atelier/fittings", label: "Fittings", icon: Ruler },
-  { to: "/atelier/appointments", label: "Book", icon: Calendar },
+  { to: "/atelier/appointments", label: "Bookings", icon: Calendar },
   { to: "/atelier/attendance", label: "Attendance", icon: Clock },
   { to: "/atelier/profile", label: "Profile", icon: User },
 ];
+
+function Splash() {
+  return <div className="eunik-os grid min-h-screen place-items-center text-sm">Opening…</div>;
+}
 
 function visibleItems(user: HouseUser, items: typeof studioItems) {
   return items.filter((item) => canSeeSection(user, sectionForPath(item.to)));
@@ -102,10 +102,10 @@ export function AccountGate() {
     <>
       <MustChangePasswordGate>
         <OsShell
-          brand="Client atelier"
+          brand="My account"
           mark={<HouseMark />}
           items={accountItems}
-          searchPlaceholder="Search orders, quotations, fittings…"
+          searchPlaceholder="Search orders, quotes, bookings…"
           profileTo="/account/profile"
         >
           <Outlet />
@@ -126,10 +126,10 @@ export function StudioGate() {
     <>
       <MustChangePasswordGate>
         <OsShell
-          brand="Fashion House OS"
+          brand="House"
           mark={<HouseMark />}
           items={visibleItems(user, studioItems)}
-          searchPlaceholder="Search SKUs, clients, orders…"
+          searchPlaceholder="Search orders, clients, products…"
           profileTo="/studio/profile"
         >
           <RestrictedOutlet user={user} />
@@ -150,10 +150,10 @@ export function AtelierGate() {
     <>
       <MustChangePasswordGate>
         <OsShell
-          brand="Atelier floor"
+          brand="Floor"
           mark={<HouseMark />}
           items={visibleItems(user, atelierItems)}
-          searchPlaceholder="Find a garment or client…"
+          searchPlaceholder="Find an order or client…"
           profileTo="/atelier/profile"
         >
           <RestrictedOutlet user={user} />

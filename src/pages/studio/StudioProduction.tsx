@@ -3,7 +3,7 @@ import { PageHeader, SectionCard, StatCard, StatusBadge, OsButton, ProgressBar }
 import { db, type ProductionStage } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import {
   ALL_STAGES,
   FLOOR_COLUMNS,
@@ -27,17 +27,17 @@ export default function StudioProduction() {
     const role = user?.role ?? "manager";
     const next = nextLegalStage(stage, role) ?? nextStage(stage);
     await db.production.moveStage(id, next);
-    toast.success(`Moved to ${next.replaceAll("_", " ")}`);
+    toast.success(`Moved to ${statusLabel(next)}`);
   }
 
   const columns: { id: string; label: string; stages: ProductionStage[] }[] = [
     { id: "waiting", label: "Waiting", stages: WAITING_STAGES },
-    ...FLOOR_COLUMNS.map((stage) => ({ id: stage, label: stage.replaceAll("_", " "), stages: [stage] })),
+    ...FLOOR_COLUMNS.map((stage) => ({ id: stage, label: statusLabel(stage), stages: [stage] })),
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Production" subtitle="Advance a garment. The same ticket Ade sees in his book." />
+      <PageHeader title="Production" subtitle="Advance an order on the floor. Clients see the same progress." />
       <div className="grid gap-4 sm:grid-cols-4">
         {columns.slice(0, 4).map((column) => (
           <StatCard
@@ -87,14 +87,14 @@ export default function StudioProduction() {
           </SectionCard>
         ))}
       </div>
-      <SectionCard title="All tickets">
+      <SectionCard title="All floor orders">
         <ul className="space-y-2">
           {(board ?? []).map((item) => (
             <li key={item.id} className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm">
               <span>
                 #{item.orderId.replace("order_", "")} {item.garment}
               </span>
-              <StatusBadge label={columnForStage(item.stage).replaceAll("_", " ")} tone={statusTone(item.stage)} />
+              <StatusBadge label={statusLabel(columnForStage(item.stage))} tone={statusTone(item.stage)} />
             </li>
           ))}
         </ul>

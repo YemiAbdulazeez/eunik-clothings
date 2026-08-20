@@ -32,6 +32,8 @@ export default function Footer() {
   const twitter = settings?.twitter;
   const phone = settings?.phone ?? "08167073585";
   const accountTo = user ? landingPath(user) : "/account/login";
+  const staff = Boolean(user && user.role !== "client");
+  const accountLabel = staff ? "House" : "My account";
 
   async function handleNewsletter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,7 +86,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link to={accountTo} className="hover:text-white">
-                  Account
+                  {accountLabel}
                 </Link>
               </li>
               <li>

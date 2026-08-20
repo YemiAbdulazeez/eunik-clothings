@@ -7,7 +7,7 @@ import { EmptyState, OsButton, PageHeader, SectionCard, StatusBadge } from "@/co
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import { shopHref } from "@/lib/osNav";
 
 export default function AccountOrders() {
@@ -41,8 +41,8 @@ export default function AccountOrders() {
       <AsyncGuard
         loading={loading}
         error={error}
-        skeleton={<p className="py-10 text-center text-sm text-muted">Opening your tickets…</p>}
-        empty={!bundle?.length ? <EmptyState title="No tickets yet" text="A Senator or suit in the bag becomes a house order." /> : undefined}
+        skeleton={<p className="py-10 text-center text-sm text-muted">Opening your orders…</p>}
+        empty={!bundle?.length ? <EmptyState title="No orders yet" text="Add something from the shop to place your first order." /> : undefined}
       >
         {bundle?.length ? (
         <div className="space-y-4">
@@ -51,13 +51,13 @@ export default function AccountOrders() {
               <SectionCard
                 key={order.id}
                 title={`#${order.number} ${order.name}`}
-                action={<StatusBadge label={order.status.replaceAll("_", " ")} tone={statusTone(order.status)} />}
+                action={<StatusBadge label={statusLabel(order.status)} tone={statusTone(order.status)} />}
               >
                 <div className="grid gap-4 md:grid-cols-[120px_1fr]">
                   {order.image ? <img src={order.image} alt="" className="h-28 w-full rounded-xl object-cover" /> : <div />}
                   <div className="space-y-3">
                     <p className="text-sm capitalize">
-                      {order.kind.replaceAll("_", " ")} · {order.fulfillment.replace("_", " ")}
+                      {statusLabel(order.kind)} · {statusLabel(order.fulfillment)}
                     </p>
                     <p className="text-ink">
                       {formatNaira(order.paidKobo)} paid of {formatNaira(order.totalKobo)}

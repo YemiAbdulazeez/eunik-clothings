@@ -30,7 +30,7 @@ import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { canSeeSection } from "@/lib/rbac";
-import { statusTone } from "@/lib/format";
+import { roleLabel, statusLabel, statusTone } from "@/lib/format";
 
 const COLORS = ["#232323", "#eeb167", "#828282"];
 
@@ -54,10 +54,10 @@ export default function StudioHome() {
   const mix = [
     { name: "RTW", value: overview?.mix.rtw ?? 0 },
     { name: "MTM", value: overview?.mix.mtm ?? 0 },
-    { name: "Bespoke", value: overview?.mix.bespoke ?? 0 },
+    { name: "Custom", value: overview?.mix.bespoke ?? 0 },
   ];
   const pipeline = Object.entries(overview?.pipeline ?? {}).map(([stage, count]) => ({
-    stage: stage.replaceAll("_", " "),
+    stage: statusLabel(stage),
     count,
   }));
   const hour = new Date().getHours();
@@ -69,7 +69,7 @@ export default function StudioHome() {
     ...(role === "desk" || role === "super_admin" || role === "manager"
       ? newRequests.map((item) => ({
           id: item.id,
-          title: `New bespoke request · ${item.outfitType}`,
+          title: `New custom request · ${item.outfitType}`,
           detail: `${item.colour} · ${item.occasion}`,
           href: "/studio/custom",
         }))
@@ -79,7 +79,7 @@ export default function StudioHome() {
           {
             id: "receipts",
             title: `${overview?.awaitingReceipts} bank receipts waiting`,
-            detail: "Finance must approve before the ticket is confirmed.",
+            detail: "Approve or reject before the order moves on.",
             href: "/studio/payments",
           },
         ]
@@ -91,7 +91,7 @@ export default function StudioHome() {
       actionLabel: "Claim",
       onAction: () =>
         void db.leads.claim(lead.id, { openTicket: true }).then(({ orderNumber }) =>
-          toast.success(orderNumber ? `Claimed — ticket #${orderNumber} opened.` : "Lead claimed."),
+          toast.success(orderNumber ? `Claimed — order #${orderNumber} opened.` : "Lead claimed."),
         ),
     })),
     ...((fabrics ?? []).filter((item) => item.status === "low").map((item) => ({
@@ -111,33 +111,33 @@ export default function StudioHome() {
   ];
 
   const tiles = [
-    { to: "/studio/orders", label: "Order monitoring", hint: "Status updates", icon: ClipboardList, section: "orders" as const },
+    { to: "/studio/orders", label: "Orders", hint: "Update order status", icon: ClipboardList, section: "orders" as const },
     { to: "/studio/products", label: "Products", hint: "Add, edit, uploads", icon: Shirt, section: "products" as const },
     { to: "/studio/collections", label: "Collections", hint: "Standalone rail", icon: Layers, section: "collections" as const },
     { to: "/studio/customers", label: "Clients", hint: "CRM follow-up", icon: Users, section: "customers" as const },
-    { to: "/studio/payments", label: "Collections", hint: "Paystack & bank", icon: Wallet, section: "payments" as const },
-    { to: "/studio/analytics", label: "Sales & profit", hint: "Naira board", icon: BarChart3, section: "analytics" as const },
-    { to: "/studio/support", label: "Customer support", hint: "Desk inbox", icon: Headphones, section: "support" as const },
-    { to: "/studio/people", label: "Staff & access", hint: "Roles", icon: UserCog, section: "people" as const },
-    { to: "/studio/events", label: "Event editor", hint: "Trunk shows", icon: Calendar, section: "events" as const },
-    { to: "/studio/production", label: "Floor tickets", hint: "Kanban", icon: Factory, section: "production" as const },
+    { to: "/studio/payments", label: "Payments", hint: "Paystack and bank", icon: Wallet, section: "payments" as const },
+    { to: "/studio/analytics", label: "Analytics", hint: "Sales and traffic", icon: BarChart3, section: "analytics" as const },
+    { to: "/studio/support", label: "Support", hint: "Client messages", icon: Headphones, section: "support" as const },
+    { to: "/studio/people", label: "Staff", hint: "Hire and access", icon: UserCog, section: "people" as const },
+    { to: "/studio/events", label: "Events", hint: "Shows and fittings", icon: Calendar, section: "events" as const },
+    { to: "/studio/production", label: "Floor board", hint: "Orders on the floor", icon: Factory, section: "production" as const },
   ].filter((tile) => (user ? canSeeSection(user, tile.section) : true));
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={`Fashion House OS · ${user?.role.replaceAll("_", " ")}`}
+        eyebrow={`House · ${roleLabel(user?.role ?? "desk")}`}
         title={`${greet}, ${user?.firstName}.`}
         subtitle={
           role === "desk"
-            ? "Leads, bookings, and bespoke requests — exceptions first."
+            ? "Leads, bookings, and custom requests — start here."
             : role === "finance"
-              ? "Receipts and outstanding balances."
+              ? "Bank transfers and balances."
               : role === "designer"
-                ? "Custom inbox and quotes."
+                ? "Custom requests and quotes."
                 : role === "content"
-                  ? "Magazine, events, and the rail."
-                  : "Exceptions first, then the naira, then the floor."
+                  ? "Magazine, events, and products."
+                  : "Desk, money, then the floor."
         }
         actions={
           canCustom ? (
@@ -165,8 +165,8 @@ export default function StudioHome() {
           {canPayments ? (
             <StatCard label="Receipts waiting" value={String(overview?.awaitingReceipts ?? 0)} tone="gold" />
           ) : null}
-          <StatCard label="Open tickets" value={String(overview?.openOrders ?? 0)} />
-          {canCustom ? <StatCard label="Active bespoke" value={String(overview?.activeBespoke ?? 0)} /> : null}
+          <StatCard label="Open orders" value={String(overview?.openOrders ?? 0)} />
+          {canCustom ? <StatCard label="Active custom" value={String(overview?.activeBespoke ?? 0)} /> : null}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -264,9 +264,9 @@ export default function StudioHome() {
                   </td>
                   <td>{order.customerName}</td>
                   <td>{order.name}</td>
-                  <td className="capitalize">{order.kind.replaceAll("_", " ")}</td>
+                  <td className="capitalize">{statusLabel(order.kind)}</td>
                   <td>
-                    <StatusBadge label={order.status.replaceAll("_", " ")} tone={statusTone(order.status)} />
+                    <StatusBadge label={statusLabel(order.status)} tone={statusTone(order.status)} />
                   </td>
                   <td className="text-ink">{formatNaira(order.totalKobo)}</td>
                 </tr>
@@ -277,14 +277,14 @@ export default function StudioHome() {
       </SectionCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="Floor tickets">
+        <SectionCard title="Orders on the floor">
           <ul className="space-y-2">
             {(board ?? []).slice(0, 5).map((item) => (
               <li key={item.id} className="flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm">
                 <span className="text-ink">
                   #{item.orderId.replace("order_", "")} {item.garment}
                 </span>
-                <StatusBadge label={item.stage.replaceAll("_", " ")} tone="gold" />
+                <StatusBadge label={statusLabel(item.stage)} tone="gold" />
               </li>
             ))}
           </ul>

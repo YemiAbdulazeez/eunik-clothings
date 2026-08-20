@@ -3,7 +3,7 @@ import { PageHeader, SectionCard, StatCard, StatusBadge, OsButton, NeedAttention
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { formatWhen, statusTone } from "@/lib/format";
+import { formatWhen, statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioPayments() {
   const { data: payments } = useAsync(() => db.payments.list(), []);
@@ -47,7 +47,7 @@ export default function StudioPayments() {
                   <td className="capitalize">{item.method.replace("_", " ")}</td>
                   <td>{item.paystackReference || item.transactionNumber}</td>
                   <td>
-                    <StatusBadge label={item.status.replaceAll("_", " ")} tone={statusTone(item.status)} />
+                    <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
                   </td>
                   <td className="text-ink">{formatNaira(item.amountKobo)}</td>
                   <td>

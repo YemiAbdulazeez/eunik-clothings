@@ -7,6 +7,7 @@ import { db, type NavSection, type PublicUser, type Role } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { assignedNav, defaultNav, HIRE_ROLES, NAV_CATALOG } from "@/lib/rbac";
 import { navAreaLabel, previewLandingPath, validateStaffNav } from "@/lib/navAccess";
+import { roleLabel } from "@/lib/format";
 
 function NavTickGrid({
   value,
@@ -23,7 +24,7 @@ function NavTickGrid({
   }
 
   const groups = [
-    { label: "Studio", items: NAV_CATALOG.filter((item) => item.area === "studio" && item.id !== "profile") },
+    { label: "House", items: NAV_CATALOG.filter((item) => item.area === "studio" && item.id !== "profile") },
     { label: "Floor", items: NAV_CATALOG.filter((item) => item.area === "atelier") },
   ];
 
@@ -97,7 +98,7 @@ function StaffAccessEditor({ person }: { person: PublicUser }) {
         >
           {HIRE_ROLES.map((item) => (
             <option key={item} value={item}>
-              {item.replaceAll("_", " ")}
+              {roleLabel(item)}
             </option>
           ))}
         </select>
@@ -158,8 +159,8 @@ export default function StudioPeople() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Staff & access"
-        subtitle="The principal hires, assigns a role, and ticks the doors that person may open."
+        title="Staff"
+        subtitle="Hire someone, pick Desk / Finance / Design / Floor, and choose what they can open."
         actions={
           principal ? (
             <OsButton variant="gold" onClick={() => setOpen(true)}>
@@ -196,7 +197,7 @@ export default function StudioPeople() {
               >
                 {HIRE_ROLES.map((role) => (
                   <option key={role} value={role}>
-                    {role.replaceAll("_", " ")}
+                    {roleLabel(role)}
                   </option>
                 ))}
               </select>
@@ -240,7 +241,7 @@ export default function StudioPeople() {
                 <th>Role</th>
                 <th>Department</th>
                 <th>Phone</th>
-                <th>Doors</th>
+                <th>What they can open</th>
                 {principal ? <th /> : null}
               </tr>
             </thead>
@@ -249,7 +250,7 @@ export default function StudioPeople() {
                 <Fragment key={person.id}>
                   <tr className="border-b border-line/70">
                     <td className="py-3 text-ink">{person.name}</td>
-                    <td className="capitalize">{person.role.replaceAll("_", " ")}</td>
+                    <td className="capitalize">{roleLabel(person.role)}</td>
                     <td>{person.department ?? "—"}</td>
                     <td>{person.phone}</td>
                     <td>{person.role === "super_admin" ? "All" : assignedNav(person).length}</td>

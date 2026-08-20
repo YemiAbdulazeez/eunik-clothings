@@ -5,7 +5,7 @@ import { OsButton, PageHeader, SectionCard, StatusBadge, StatCard } from "@/comp
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import type { OrderStatus } from "@/db/types";
 
 const FLOW: OrderStatus[] = [
@@ -25,7 +25,7 @@ export default function StudioOrderDetail() {
   const { data: prod } = useAsync(() => db.production.getByOrder(id), [id]);
   const { data: items } = useAsync(() => db.orders.items(id), [id]);
 
-  if (!order) return <p>Loading ticket…</p>;
+  if (!order) return <p>Loading order…</p>;
 
   return (
     <div className="space-y-6">
@@ -42,7 +42,7 @@ export default function StudioOrderDetail() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Total" value={formatNaira(order.totalKobo)} />
         <StatCard label="Paid" value={formatNaira(order.paidKobo)} />
-        <StatCard label="Status" value={order.status.replaceAll("_", " ")} />
+        <StatCard label="Status" value={statusLabel(order.status)} />
       </div>
       <SectionCard title="Progress">
         <OrderStepper status={order.status} stage={prod?.stage} kind={order.kind} />
@@ -54,10 +54,10 @@ export default function StudioOrderDetail() {
               key={status}
               variant={status === order.status ? "gold" : "ghost"}
               onClick={() =>
-                void db.orders.updateStatus(order.id, status).then(() => toast.success(`Moved to ${status.replaceAll("_", " ")}.`))
+                void db.orders.updateStatus(order.id, status).then(() => toast.success(`Moved to ${statusLabel(status)}.`))
               }
             >
-              {status.replaceAll("_", " ")}
+              {statusLabel(status)}
             </OsButton>
           ))}
         </div>
@@ -74,7 +74,7 @@ export default function StudioOrderDetail() {
           ))}
         </ul>
         <p className="mt-3">
-          <StatusBadge label={order.kind.replaceAll("_", " ")} tone={statusTone(order.status)} />
+          <StatusBadge label={statusLabel(order.kind)} tone={statusTone(order.status)} />
         </p>
       </SectionCard>
     </div>

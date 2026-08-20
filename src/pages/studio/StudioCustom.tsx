@@ -5,7 +5,7 @@ import { PageHeader, SectionCard, StatusBadge, OsButton, Field, inputClass } fro
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { nairaToKobo, formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 function ReviseQuoteForm({
   quoteId,
@@ -65,7 +65,7 @@ export default function StudioCustom() {
           <SectionCard
             key={item.id}
             title={`${item.outfitType} · ${item.colour}`}
-            action={<StatusBadge label={item.status} tone={statusTone(item.status)} />}
+            action={<StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />}
           >
             <p>{item.description}</p>
             <p className="mt-1 text-sm">
@@ -76,7 +76,7 @@ export default function StudioCustom() {
                 <p className="font-medium text-ink">
                   {quote.number} · {formatNaira(quote.totalKobo)} · deposit {formatNaira(quote.depositKobo)}
                 </p>
-                <StatusBadge label={quote.status} tone={statusTone(quote.status)} />
+                <StatusBadge label={statusLabel(quote.status)} tone={statusTone(quote.status)} />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Link to="/studio/quotes" className="text-xs underline">
                     Open quotes file

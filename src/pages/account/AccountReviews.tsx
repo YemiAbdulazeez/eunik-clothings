@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountReviews() {
   const { data: orders } = useAsync(() => db.orders.listMine(), []);
@@ -71,14 +71,14 @@ export default function AccountReviews() {
         )}
       </SectionCard>
       {!reviews?.length ? (
-        <EmptyState title="No reviews yet" text="When a ticket is delivered, the look appears above." />
+        <EmptyState title="No reviews yet" text="When an order is ready or delivered, the look appears above." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {(reviews ?? []).map((item) => (
             <SectionCard
               key={item.id}
               title={item.customerName}
-              action={<StatusBadge label={item.status} tone={statusTone(item.status)} />}
+              action={<StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />}
             >
               <p className="flex items-center gap-1 text-sm text-ink">
                 <Star className="h-4 w-4 fill-gold text-gold" /> {item.rating} / 5

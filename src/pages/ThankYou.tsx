@@ -25,7 +25,7 @@ export default function ThankYou() {
       <PageHero title="Thank you" crumb="Order" />
       <section className="mx-auto max-w-xl px-6 py-16 text-center">
         <AsyncGuard loading={loading} error={error}>
-          <h2 className="font-alt text-3xl text-ink">The house has the ticket.</h2>
+          <h2 className="font-alt text-3xl text-ink">We have your order.</h2>
           {order ? (
           <>
             <p className="mt-4">

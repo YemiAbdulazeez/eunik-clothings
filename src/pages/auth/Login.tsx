@@ -55,8 +55,8 @@ export default function Login() {
           <Link to="/" className="text-sm text-ink">
             ← Back to house
           </Link>
-          <h2 className="mt-6 font-alt text-2xl text-ink">Client sign in</h2>
-          <p className="text-sm">Your wardrobe, quotes and fittings.</p>
+          <h2 className="mt-6 font-alt text-2xl text-ink">My account</h2>
+          <p className="text-sm">Orders, quotes, and bookings.</p>
           <form onSubmit={(event) => void submit(event)} className="mt-8 space-y-4">
             <label className="block">
               <span className="os-label">Email</span>
@@ -71,7 +71,7 @@ export default function Login() {
               <Link to="/account/forgot-password">Forgot</Link>
             </div>
             <button disabled={busy} className="os-pill w-full bg-ink text-white">
-              Enter the atelier
+              Enter my account
             </button>
           </form>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -97,7 +97,7 @@ export default function Login() {
             </Link>
             <span className="mx-2">·</span>
             <Link to="/studio/login" className="text-muted">
-              Staff sign in
+              House sign in
             </Link>
           </p>
         </div>

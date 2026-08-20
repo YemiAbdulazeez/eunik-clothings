@@ -4,7 +4,7 @@ import { Field, OsButton, PageHeader, SectionCard, StatusBadge, StatCard, inputC
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira, nairaToKobo } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioQuotes() {
   const { data: quotes, reload } = useAsync(() => db.quotations.listAll(), []);
@@ -42,7 +42,7 @@ export default function StudioQuotes() {
                     <td className="py-3 font-medium text-ink">{item.number}</td>
                     <td>{item.description}</td>
                     <td>
-                      <StatusBadge label={item.status} tone={statusTone(item.status)} />
+                      <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
                     </td>
                     <td>{formatNaira(item.totalKobo)}</td>
                     <td>{formatNaira(item.depositKobo)}</td>

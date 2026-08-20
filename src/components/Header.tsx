@@ -69,6 +69,7 @@ export default function Header() {
 
   const accountTo = user ? landingPath(user) : "/account/login";
   const staff = Boolean(user && user.role !== "client");
+  const accountLabel = staff ? "House" : "My account";
   const freeShip = settings ? formatNaira(settings.freeShippingKobo) : "₦100,000";
   const instagram = settings?.instagram;
 
@@ -112,7 +113,7 @@ export default function Header() {
               <NavLink to="/search" aria-label="Search" className="p-1">
                 <Search className="h-5 w-5" />
               </NavLink>
-              <NavLink to={accountTo} aria-label="Account" className="p-1">
+              <NavLink to={accountTo} aria-label={accountLabel} className="p-1">
                 <UserRound className="h-5 w-5" />
               </NavLink>
               {staff ? null : (
@@ -153,7 +154,7 @@ export default function Header() {
 
         {open ? (
           <div className="flex flex-col gap-1 border-t border-line bg-white px-6 py-6 font-alt lg:hidden">
-            {[...leftLinks, ...rightLinks, { to: accountTo, label: "Account" }, { to: "/search", label: "Search" }].map(
+            {[...leftLinks, ...rightLinks, { to: accountTo, label: accountLabel }, { to: "/search", label: "Search" }].map(
               (link) => (
                 <NavItem key={link.label} {...link} onClick={() => setOpen(false)} />
               ),

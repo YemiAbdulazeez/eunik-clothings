@@ -4,7 +4,7 @@ import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inpu
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountSupport() {
   const { user } = useSession();
@@ -49,7 +49,7 @@ export default function AccountSupport() {
             </OsButton>
           </form>
         </SectionCard>
-        <SectionCard title="Your tickets">
+        <SectionCard title="Your messages">
           {!tickets?.length ? (
             <EmptyState title="Quiet desk" text="Ask about a fitting, balance or alteration." />
           ) : (
@@ -58,7 +58,7 @@ export default function AccountSupport() {
                 <li key={item.id} className="rounded-xl border border-line p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-ink">{item.subject}</p>
-                    <StatusBadge label={item.status} tone={statusTone(item.status)} />
+                    <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
                   </div>
                   <p className="mt-1 text-sm">{item.message}</p>
                   {item.replies.map((reply) => (

@@ -1,53 +1,32 @@
 import { Check } from "lucide-react";
 import type { OrderStatus, ProductionStage } from "@/db/types";
+import { ORDER_STATUS_LABEL, STAGE_LABEL } from "@/lib/statusLabels";
 
-const RTW = [
-  { key: "confirmed", label: "Confirmed" },
-  { key: "processing", label: "Packed" },
-  { key: "ready", label: "Ready" },
-  { key: "dispatched", label: "On the way" },
-  { key: "delivered", label: "Delivered" },
+/** Client-facing progress: Shop → pay → atelier → done */
+const CLIENT_STEPS = [
+  { keys: ["pending_payment", "awaiting_transfer"], label: ORDER_STATUS_LABEL.pending_payment },
+  { keys: ["confirmed", "processing"], label: ORDER_STATUS_LABEL.confirmed },
+  { keys: ["production"], label: ORDER_STATUS_LABEL.production },
+  { keys: ["ready"], label: ORDER_STATUS_LABEL.ready },
+  { keys: ["dispatched", "delivered"], label: ORDER_STATUS_LABEL.delivered },
 ] as const;
 
-const ATELIER = [
-  { key: "deposit_paid", label: "Deposit" },
-  { key: "measurements_confirmed", label: "Tape" },
-  { key: "cutting", label: "Cutting" },
-  { key: "sewing", label: "Sewing" },
-  { key: "finishing", label: "Finishing" },
-  { key: "first_fitting", label: "Fitting" },
-  { key: "quality_check", label: "QC" },
-  { key: "ready", label: "Ready" },
+const ATELIER_STEPS = [
+  { keys: ["quote_accepted", "deposit_paid", "design_confirmed", "fabric_confirmed"], label: STAGE_LABEL.deposit_paid },
+  { keys: ["measurements_confirmed"], label: STAGE_LABEL.measurements_confirmed },
+  { keys: ["cutting"], label: STAGE_LABEL.cutting },
+  { keys: ["sewing"], label: STAGE_LABEL.sewing },
+  { keys: ["finishing"], label: STAGE_LABEL.finishing },
+  { keys: ["first_fitting", "alterations", "final_fitting"], label: STAGE_LABEL.first_fitting },
+  { keys: ["quality_check"], label: STAGE_LABEL.quality_check },
+  { keys: ["ready", "completed"], label: STAGE_LABEL.ready },
 ] as const;
 
-const STATUS_INDEX: Record<string, number> = {
-  pending_payment: 0,
-  awaiting_transfer: 0,
-  confirmed: 0,
-  processing: 1,
-  production: 2,
-  ready: 2,
-  dispatched: 3,
-  delivered: 4,
-  cancelled: -1,
-};
-
-const STAGE_INDEX: Record<string, number> = {
-  quote_accepted: 0,
-  deposit_paid: 0,
-  design_confirmed: 0,
-  fabric_confirmed: 0,
-  measurements_confirmed: 1,
-  cutting: 2,
-  sewing: 3,
-  finishing: 4,
-  first_fitting: 5,
-  alterations: 5,
-  final_fitting: 5,
-  quality_check: 6,
-  ready: 7,
-  completed: 7,
-};
+function stepIndex(steps: readonly { keys: readonly string[] }[], value: string | undefined): number {
+  if (!value) return 0;
+  const found = steps.findIndex((step) => step.keys.includes(value));
+  return found === -1 ? 0 : found;
+}
 
 export default function OrderStepper({
   status,
@@ -58,11 +37,12 @@ export default function OrderStepper({
   stage?: ProductionStage | null;
   kind: string;
 }) {
-  const atelier = kind !== "ready_to_wear" && Boolean(stage);
-  const steps = atelier ? ATELIER : RTW;
-  const current = atelier ? (STAGE_INDEX[stage ?? ""] ?? 0) : (STATUS_INDEX[status] ?? 0);
+  const onFloor = kind !== "ready_to_wear" && Boolean(stage) && status === "production";
+  const steps = onFloor ? ATELIER_STEPS : CLIENT_STEPS;
+  const current = onFloor ? stepIndex(ATELIER_STEPS, stage ?? undefined) : stepIndex(CLIENT_STEPS, status);
+
   if (status === "cancelled") {
-    return <p className="text-sm text-[var(--destructive)]">This ticket was cancelled.</p>;
+    return <p className="text-sm text-[var(--destructive)]">This order was cancelled.</p>;
   }
 
   return (
@@ -72,7 +52,7 @@ export default function OrderStepper({
         const active = index === current;
         return (
           <li
-            key={step.key}
+            key={step.label}
             className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
               active ? "border-gold bg-gold/20 text-ink" : done ? "border-ink bg-ink text-white" : "border-line text-muted"
             }`}

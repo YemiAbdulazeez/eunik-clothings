@@ -16,6 +16,7 @@ import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
+import { statusLabel } from "@/lib/format";
 
 const RING: Record<string, number> = {
   quote_accepted: 8,
@@ -115,9 +116,9 @@ export default function AccountHome() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Your atelier · Client"
+        eyebrow="My account"
         title={`${greet}, ${user?.firstName}.`}
-        subtitle="We’ll cut when the cloth and the measurements agree."
+        subtitle="Orders, quotes, and bookings — all in one place."
         actions={
           <>
             <Link to="/account/custom" className="os-pill bg-gold text-ink">
@@ -133,20 +134,20 @@ export default function AccountHome() {
       <NeedAttention items={attention} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Open orders" value={String(orders?.length ?? 0)} hint="Ready-to-wear, MTM and bespoke" />
-        <StatCard label="Wishlist" value={String(wishlist?.length ?? 0)} hint="Looks waiting in the book" />
-        <StatCard label="Balance" value={formatNaira(balance)} tone={balance > 0 ? "gold" : "plain"} hint="Unpaid on open tickets" />
-        <StatCard label="House notes" value={String(notes?.length ?? 0)} hint="Sewing, fittings, quotes" />
+        <StatCard label="Open orders" value={String(orders?.length ?? 0)} hint="Ready to wear, made to measure, custom" />
+        <StatCard label="Wishlist" value={String(wishlist?.length ?? 0)} hint="Looks you saved" />
+        <StatCard label="Balance" value={formatNaira(balance)} tone={balance > 0 ? "gold" : "plain"} hint="Still to pay on open orders" />
+        <StatCard label="Notes" value={String(notes?.length ?? 0)} hint="Quotes, fittings, updates" />
       </div>
 
       <DashNavGrid
         tiles={[
-          { to: "/account/shop", label: "Shop collections", hint: "Browse the rail", icon: ShoppingBag },
-          { to: "/account/orders", label: "Track orders", hint: "Steps on the floor", icon: Package },
-          { to: "/account/custom", label: "Custom / pre-order", hint: "Quote then cut", icon: Sparkles },
-          { to: "/account/appointments", label: "Book Ibadan", hint: "Tape & fittings", icon: Calendar },
-          { to: "/account/payments", label: "Payments", hint: "Paystack or transfer", icon: CreditCard },
-          { to: "/account/wishlist", label: "Wishlist", hint: "Looks on hold", icon: Heart },
+          { to: "/account/shop", label: "Shop", hint: "Browse the collection", icon: ShoppingBag },
+          { to: "/account/orders", label: "Orders", hint: "Track your order", icon: Package },
+          { to: "/account/custom", label: "Custom", hint: "Request and quotes", icon: Sparkles },
+          { to: "/account/appointments", label: "Bookings", hint: "Tape and fittings", icon: Calendar },
+          { to: "/account/payments", label: "Payments", hint: "Paystack or bank transfer", icon: CreditCard },
+          { to: "/account/wishlist", label: "Wishlist", hint: "Saved looks", icon: Heart },
           { to: "/account/reviews", label: "Reviews", hint: "After delivery", icon: MessageCircleHeart },
           { to: "/account/journal", label: "Magazine", hint: "House stories", icon: BookOpen },
         ]}
@@ -155,17 +156,17 @@ export default function AccountHome() {
       {main && prod ? (
         <SectionCard
           title={`#${main.number} ${main.name}`}
-          action={<StatusBadge label={prod.stage.replaceAll("_", " ")} tone="gold" />}
+          action={<StatusBadge label={statusLabel(prod.stage)} tone="gold" />}
         >
           <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
             <div>
               <p className="mb-3 text-sm">
-                Paid {formatNaira(main.paidKobo)} of {formatNaira(main.totalKobo)} · {main.kind.replaceAll("_", " ")}
+                Paid {formatNaira(main.paidKobo)} of {formatNaira(main.totalKobo)} · {statusLabel(main.kind)}
               </p>
               <ProgressBar value={RING[prod.stage] ?? 30} gold />
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link to="/account/orders" className="os-pill bg-ink text-white">
-                  Track orders
+                  View orders
                 </Link>
                 {main.paidKobo < main.totalKobo ? (
                   <Link to="/account/payments" className="os-pill bg-gold text-ink">
@@ -180,7 +181,7 @@ export default function AccountHome() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="Wardrobe spend">
+        <SectionCard title="What you have spent">
           {chart.length ? (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -194,11 +195,11 @@ export default function AccountHome() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm">No tickets yet.</p>
+            <p className="text-sm">No orders yet.</p>
           )}
         </SectionCard>
         <SectionCard
-          title="Upcoming at Ibadan"
+          title="Upcoming in Ibadan"
           action={
             <Link to="/account/appointments" className="text-sm underline">
               Book
@@ -206,14 +207,14 @@ export default function AccountHome() {
           }
         >
           <ul className="space-y-3">
-            {(appointments ?? []).length === 0 ? <p className="text-sm">No appointments on the book.</p> : null}
+            {(appointments ?? []).length === 0 ? <p className="text-sm">No bookings yet.</p> : null}
             {(appointments ?? []).map((item) => (
               <li key={item.id} className="rounded-xl border border-line px-4 py-3">
                 <p className="font-medium text-ink">{item.service}</p>
                 <p className="text-sm">
                   {item.date} {item.time} · {item.location}
                 </p>
-                <StatusBadge label={item.status} tone="gold" />
+                <StatusBadge label={statusLabel(item.status)} tone="gold" />
               </li>
             ))}
           </ul>

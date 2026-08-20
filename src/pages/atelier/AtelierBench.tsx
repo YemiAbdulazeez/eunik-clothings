@@ -8,7 +8,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
 import { canSeeSection } from "@/lib/rbac";
 import { nextLegalStage } from "@/lib/productionStages";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AtelierBench() {
   const { user } = useSession();
@@ -21,7 +21,7 @@ export default function AtelierBench() {
   const overdue = assigned.filter((item) => item.dueDate < today);
 
   const tiles = [
-    { to: "/atelier/queue", label: "Queue", hint: "Tickets on the floor", icon: ClipboardList, section: "queue" as const },
+    { to: "/atelier/queue", label: "Queue", hint: "Orders on the floor", icon: ClipboardList, section: "queue" as const },
     { to: "/atelier/fittings", label: "Fittings", hint: "On the book", icon: Ruler, section: "fittings" as const },
     { to: "/atelier/appointments", label: "Appointments", hint: "Walk-ins", icon: Calendar, section: "appointments" as const },
     { to: "/atelier/attendance", label: "Attendance", hint: "Clock in / out", icon: Clock, section: "attendance" as const },
@@ -45,15 +45,15 @@ export default function AtelierBench() {
     }
     await db.production.moveStage(id, next);
     reload();
-    toast.success(`Moved to ${next.replaceAll("_", " ")}`);
+    toast.success(`Moved to ${statusLabel(next)}`);
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Atelier floor"
+        eyebrow="Floor"
         title={`On your bench, ${user?.firstName}.`}
-        subtitle="Advance only the tickets assigned to this role. No ₦ KPIs on the floor."
+        subtitle="Advance only orders on your bench. No money screens here."
         actions={
           <OsButton variant={clocked ? "ghost" : "gold"} onClick={clock}>
             {clocked ? "Clock out" : "Clock in"}
@@ -71,7 +71,7 @@ export default function AtelierBench() {
           ...overdue.map((item) => ({
             id: item.id,
             title: `${item.garment} needs the next stage`,
-            detail: `Due ${item.dueDate} · ${item.stage.replaceAll("_", " ")}`,
+            detail: `Due ${item.dueDate} · ${statusLabel(item.stage)}`,
             href: "/atelier/queue",
           })),
           ...(fittings ?? [])
@@ -84,7 +84,7 @@ export default function AtelierBench() {
             })),
         ]}
       />
-      <SectionCard title="Your tickets">
+      <SectionCard title="On your bench">
         <div className="grid gap-3 md:grid-cols-2">
           {assigned.length ? (
             assigned.map((item) => {
@@ -95,10 +95,10 @@ export default function AtelierBench() {
                   <p className="mt-1 text-sm">
                     #{item.orderId.replace("order_", "")} · due {item.dueDate}
                   </p>
-                  <StatusBadge label={item.stage.replaceAll("_", " ")} tone={statusTone(item.stage)} />
+                  <StatusBadge label={statusLabel(item.stage)} tone={statusTone(item.stage)} />
                   {next ? (
                     <OsButton className="mt-3" variant="gold" onClick={() => void advance(item.id, item.stage)}>
-                      Advance to {next.replaceAll("_", " ")}
+                      Advance to {statusLabel(next)}
                     </OsButton>
                   ) : null}
                   <Link to="/atelier/queue" className="mt-2 block text-sm underline">
@@ -108,7 +108,7 @@ export default function AtelierBench() {
               );
             })
           ) : (
-            <p className="text-sm">No tickets on your bench right now.</p>
+            <p className="text-sm">Nothing on your bench right now.</p>
           )}
         </div>
       </SectionCard>

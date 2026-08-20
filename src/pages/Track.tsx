@@ -4,6 +4,7 @@ import PageHero from "@/components/PageHero";
 import OrderStepper from "@/components/os/OrderStepper";
 import { db } from "@/db/database";
 import type { OrderStatus, ProductionStage } from "@/db/types";
+import { statusLabel } from "@/lib/format";
 
 export default function TrackOrder() {
   const [busy, setBusy] = useState(false);
@@ -18,7 +19,7 @@ export default function TrackOrder() {
     try {
       const found = await db.orders.trackPublic(number);
       setResult(found);
-      if (!found) setError("No ticket matches that number. Try 1001 from the demo.");
+      if (!found) setError("No order matches that number. Try 1001 from the demo.");
     } finally {
       setBusy(false);
     }
@@ -54,7 +55,7 @@ export default function TrackOrder() {
               <p className="os-label">#{result.number}</p>
               <h3 className="font-alt text-2xl text-ink">{result.name}</h3>
               <p className="mt-1 text-sm capitalize">
-                {result.kind.replaceAll("_", " ")} · {result.fulfillment.replace("_", " ")} · {result.customerName}
+                {statusLabel(result.kind)} · {statusLabel(result.fulfillment)} · {result.customerName}
               </p>
             </div>
             <OrderStepper
@@ -63,9 +64,9 @@ export default function TrackOrder() {
               kind={result.kind}
             />
             {result.stage ? (
-              <p className="text-sm capitalize">Current atelier stage · {result.stage.replaceAll("_", " ")}</p>
+              <p className="text-sm capitalize">Current stage · {statusLabel(result.stage)}</p>
             ) : (
-              <p className="text-sm capitalize">Status · {result.status.replaceAll("_", " ")}</p>
+              <p className="text-sm capitalize">Status · {statusLabel(result.status)}</p>
             )}
           </div>
         ) : null}

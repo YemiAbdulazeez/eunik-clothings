@@ -5,7 +5,7 @@ import { Field, OsButton, PageHeader, ProgressBar, SectionCard, StatusBadge, inp
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioCustomer() {
   const { id = "" } = useParams();
@@ -85,7 +85,7 @@ export default function StudioCustomer() {
                   </Link>{" "}
                   {order.name}
                 </p>
-                <StatusBadge label={order.status.replaceAll("_", " ")} tone={statusTone(order.status)} />
+                <StatusBadge label={statusLabel(order.status)} tone={statusTone(order.status)} />
               </div>
               <p className="text-sm">
                 {formatNaira(order.paidKobo)} / {formatNaira(order.totalKobo)}

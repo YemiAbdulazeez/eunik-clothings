@@ -33,8 +33,8 @@ export default function StudioLogin() {
           <img src="/images/eunik.png" alt="EUNIK" className="h-10 w-fit bg-white px-3 py-2" />
           <div>
             <p className="os-label text-gold">Restricted</p>
-            <h1 className="font-alt text-4xl">Fashion House OS</h1>
-            <p className="mt-4 max-w-sm text-white/70">Need WhatsApp floor access? Ask the manager.</p>
+            <h1 className="font-alt text-4xl">House</h1>
+            <p className="mt-4 max-w-sm text-white/70">Desk, Finance, Design, and Floor — sign in with your work email.</p>
           </div>
           <p className="text-sm text-white/50">EUNIK MULTIPURPOSE COMPANY NIGERIA LIMITED</p>
         </div>
@@ -45,7 +45,7 @@ export default function StudioLogin() {
             ← Back to house
           </Link>
           <img src="/images/eunik.png" alt="EUNIK" className="mt-6 h-8 lg:hidden" />
-          <h2 className="mt-6 font-alt text-2xl text-ink">Staff sign in</h2>
+          <h2 className="mt-6 font-alt text-2xl text-ink">House sign in</h2>
           <form id="studio-login" onSubmit={(event) => void submit(event)} className="mt-8 space-y-4">
             <label className="block">
               <span className="os-label">Work email</span>
@@ -57,7 +57,7 @@ export default function StudioLogin() {
             </label>
             <p className="text-xs">Presentation accounts — not production.</p>
             <button disabled={busy} className="os-pill w-full bg-ink text-white">
-              Open the floor
+              Open House
             </button>
           </form>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -77,7 +77,7 @@ export default function StudioLogin() {
             ))}
           </div>
           <Link to="/account/login" className="mt-8 inline-block text-sm text-ink underline">
-            Client sign in
+            My account sign in
           </Link>
         </div>
       </div>

@@ -4,10 +4,10 @@ import { canUseArea, landingPathForUser } from "@/lib/rbac";
 export function navAreaLabel(user: Pick<PublicUser, "role" | "navSections">): string {
   const studio = canUseArea(user as PublicUser, "studio");
   const atelier = canUseArea(user as PublicUser, "atelier");
-  if (studio && atelier) return "Studio + Atelier";
-  if (studio) return "Studio";
-  if (atelier) return "Atelier";
-  return "None — staff would loop";
+  if (studio && atelier) return "House + Floor";
+  if (studio) return "House";
+  if (atelier) return "Floor";
+  return "None — pick at least one door";
 }
 
 export function validateStaffNav(role: Role, navSections: NavSection[]): { ok: boolean; message?: string } {

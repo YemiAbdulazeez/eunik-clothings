@@ -15,7 +15,7 @@ export default function StaffShopGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && isStaff) {
-      toast.message("House staff use Studio, not the bag.");
+      toast.message("Staff use House, not the shopping bag.");
     }
   }, [loading, isStaff]);
 

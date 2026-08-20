@@ -3,7 +3,7 @@ import { PageHeader, SectionCard, StatusBadge, StatCard } from "@/components/os/
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusTone } from "@/lib/format";
+import { statusLabel, statusTone } from "@/lib/format";
 import { useMemo, useState } from "react";
 
 export default function StudioOrders() {
@@ -16,11 +16,11 @@ export default function StudioOrders() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Orders" subtitle="Every naira ticket — RTW, MTM, bespoke." />
+      <PageHeader title="Orders" subtitle="Ready to wear, made to measure, and custom orders." />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="All" value={String(orders?.length ?? 0)} />
         <StatCard label="In production" value={String(orders?.filter((item) => item.status === "production").length ?? 0)} />
-        <StatCard label="Awaiting transfer" value={String(orders?.filter((item) => item.status === "awaiting_transfer").length ?? 0)} tone="gold" />
+        <StatCard label="Waiting for bank check" value={String(orders?.filter((item) => item.status === "awaiting_transfer").length ?? 0)} tone="gold" />
       </div>
       <div className="flex flex-wrap gap-2 rounded-full border border-line bg-white p-1">
         {["all", "production", "awaiting_transfer", "ready", "bespoke", "made_to_measure"].map((key) => (
@@ -30,7 +30,7 @@ export default function StudioOrders() {
             onClick={() => setFilter(key)}
             className={`rounded-full px-4 py-1.5 text-sm capitalize ${filter === key ? "bg-ink text-white" : "text-ink"}`}
           >
-            {key.replaceAll("_", " ")}
+            {key === "all" ? "All" : statusLabel(key)}
           </button>
         ))}
       </div>
@@ -62,9 +62,9 @@ export default function StudioOrders() {
                     </Link>
                   </td>
                   <td>{order.name}</td>
-                  <td className="capitalize">{order.kind.replaceAll("_", " ")}</td>
+                  <td className="capitalize">{statusLabel(order.kind)}</td>
                   <td>
-                    <StatusBadge label={order.status.replaceAll("_", " ")} tone={statusTone(order.status)} />
+                    <StatusBadge label={statusLabel(order.status)} tone={statusTone(order.status)} />
                   </td>
                   <td>{formatNaira(order.paidKobo)}</td>
                   <td className="text-ink">{formatNaira(order.totalKobo)}</td>

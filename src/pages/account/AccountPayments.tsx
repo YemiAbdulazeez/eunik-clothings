@@ -4,7 +4,7 @@ import { PageHeader, SectionCard, StatCard, StatusBadge } from "@/components/os/
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { formatWhen, statusTone } from "@/lib/format";
+import { formatWhen, statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountPayments() {
   const { data: orders, reload: refreshOrders } = useAsync(() => db.orders.listMine(), []);
@@ -30,13 +30,13 @@ export default function AccountPayments() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Settled" value={formatNaira(settled)} />
         <StatCard label="Open balance" value={formatNaira(openTotal)} tone={openTotal ? "gold" : "plain"} />
-        <StatCard label="Open tickets" value={String(dues.length)} />
+        <StatCard label="Open orders" value={String(dues.length)} />
       </div>
       {dues.length ? (
         dues.map((due) => (
           <SectionCard key={due.id} title={`Pay #${due.number} · ${formatNaira(due.totalKobo - due.paidKobo)}`}>
             <p className="mb-4 text-sm">
-              {due.name} · <StatusBadge label={due.status.replaceAll("_", " ")} tone={statusTone(due.status)} />
+              {due.name} · <StatusBadge label={statusLabel(due.status)} tone={statusTone(due.status)} />
             </p>
             <PayMethods
               amountKobo={due.totalKobo - due.paidKobo}
@@ -46,7 +46,7 @@ export default function AccountPayments() {
           </SectionCard>
         ))
       ) : (
-        <SectionCard title="Nothing due">All open tickets are settled.</SectionCard>
+        <SectionCard title="Nothing due">Nothing left to pay.</SectionCard>
       )}
       <SectionCard title="Ledger">
         <div className="overflow-x-auto">
@@ -67,7 +67,7 @@ export default function AccountPayments() {
                   <td className="capitalize">{item.method.replace("_", " ")}</td>
                   <td className="max-w-[180px] truncate">{item.paystackReference || item.transactionNumber || "—"}</td>
                   <td>
-                    <StatusBadge label={item.status.replaceAll("_", " ")} tone={statusTone(item.status)} />
+                    <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
                   </td>
                   <td className="text-ink">{formatNaira(item.amountKobo)}</td>
                 </tr>
