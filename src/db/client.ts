@@ -3,6 +3,7 @@ import { getState, mutate, replaceState, subscribe } from "./persist";
 import { createSeed } from "./seed";
 import { ATELIER_ROLES, landingPath, readSession, writeSession } from "./session";
 import { canSeeSection, defaultNav, isHouseStaff } from "../lib/rbac";
+import { emitCartChange } from "../lib/cartEvents";
 import {
   HTTP_ENABLED,
   httpAuth,
@@ -216,7 +217,7 @@ function demoChips(): DemoChip[] {
   return [
     { email: "ade@eunik.demo", label: "Ade · client", role: "client" },
     { email: "funmi@eunik.demo", label: "Funmi · client", role: "client" },
-    { email: "olamide@eunik.demo", label: "Olamide · super admin", role: "super_admin" },
+    { email: "olamideabolanle1@gmail.com", label: "Olamide · super admin", role: "super_admin" },
     { email: "manager@eunik.demo", label: "Manager", role: "manager" },
     { email: "desk@eunik.demo", label: "Front desk", role: "desk" },
     { email: "designer@eunik.demo", label: "Designer", role: "designer" },
@@ -1000,7 +1001,11 @@ export const db = {
       return ensureCart(ownerId());
     },
     async add(line: Omit<CartLine, "id">) {
-      if (HTTP_ENABLED) return (await httpCart.addLine(line)) as Cart;
+      if (HTTP_ENABLED) {
+        const cart = (await httpCart.addLine(line)) as Cart;
+        emitCartChange();
+        return cart;
+      }
       await delay();
       assertCanShop();
       let cart!: Cart;
@@ -1024,7 +1029,11 @@ export const db = {
       return cart;
     },
     async updateQty(lineId: string, qty: number) {
-      if (HTTP_ENABLED) return (await httpCart.updateQty(lineId, qty)) as Cart;
+      if (HTTP_ENABLED) {
+        const cart = (await httpCart.updateQty(lineId, qty)) as Cart;
+        emitCartChange();
+        return cart;
+      }
       await delay(80);
       assertCanShop();
       let cart!: Cart;
@@ -1042,7 +1051,9 @@ export const db = {
     async remove(lineId: string) {
       if (HTTP_ENABLED) {
         await httpCart.removeLine(lineId);
-        return (await httpCart.get()) as Cart;
+        const cart = (await httpCart.get()) as Cart;
+        emitCartChange();
+        return cart;
       }
       return this.updateQty(lineId, 0);
     },

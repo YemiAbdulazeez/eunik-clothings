@@ -201,10 +201,15 @@ export const httpOrders = {
     address?: string;
     couponCode?: string;
   }) {
-    return api<{ orderId: string; orderNumber: string; totalKobo: number; depositKobo: number; needsLogin?: boolean }>(
-      "/orders",
-      { method: "POST", body: payload },
-    );
+    return api<{
+      orderId: string;
+      orderNumber: string;
+      totalKobo: number;
+      depositKobo: number;
+      needsLogin?: boolean;
+      accountCreated?: boolean;
+      email?: string;
+    }>("/orders", { method: "POST", body: payload });
   },
   async list(params: { status?: string; page?: number } = {}) {
     const qs = new URLSearchParams();

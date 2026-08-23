@@ -1,5 +1,8 @@
 import { useState, type ImgHTMLAttributes } from "react";
 
+/** Session memory so remounts skip skeleton/opacity flash for recently shown images. */
+const seen = new Set<string>();
+
 export default function LazyImage({
   src,
   alt = "",
@@ -11,7 +14,8 @@ export default function LazyImage({
   wrapperClassName?: string;
   aspectClassName?: string;
 }) {
-  const [loaded, setLoaded] = useState(false);
+  const known = Boolean(src && seen.has(src));
+  const [loaded, setLoaded] = useState(known);
   const [failed, setFailed] = useState(false);
 
   return (
@@ -25,11 +29,16 @@ export default function LazyImage({
         <img
           src={src}
           alt={alt}
-          loading="lazy"
+          loading={known ? "eager" : "lazy"}
           decoding="async"
-          onLoad={() => setLoaded(true)}
+          // Hint the browser to keep/reuse HTTP cache aggressively for product imagery
+          referrerPolicy="no-referrer-when-downgrade"
+          onLoad={() => {
+            seen.add(src);
+            setLoaded(true);
+          }}
           onError={() => setFailed(true)}
-          className={`${className} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          className={`${className} transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
           {...rest}
         />
       )}

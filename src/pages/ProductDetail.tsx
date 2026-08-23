@@ -13,6 +13,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { openProductWhatsApp } from "@/lib/whatsapp";
 import { useSession } from "@/context/SessionProvider";
+import { useCart } from "@/context/CartProvider";
 import { inAccount, mtmHref } from "@/lib/osNav";
 import { canShop, isHouseStaff } from "@/lib/rbac";
 
@@ -22,6 +23,7 @@ export default function ProductDetail() {
   const location = useLocation();
   const embedded = inAccount(location.pathname);
   const { user } = useSession();
+  const { refresh: refreshCart } = useCart();
   const { data: product, loading } = useAsync(() => db.products.getBySku(sku), [sku]);
   const { data: variants } = useAsync(
     () => (product ? db.products.variants(product.id) : Promise.resolve([])),
@@ -76,6 +78,7 @@ export default function ProductDetail() {
         qty: 1,
         variantId: variants?.find((item) => item.size === size)?.id,
       });
+      await refreshCart();
       toast.success(kind === "preorder" || out ? "Pre-order in your bag." : "Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");

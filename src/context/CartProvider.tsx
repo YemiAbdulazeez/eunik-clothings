@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { db, type Cart } from "@/db/database";
 import { subscribe } from "@/db/persist";
+import { onCartChange } from "@/lib/cartEvents";
 
 type CartContextValue = {
   cart: Cart | null;
@@ -20,9 +21,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh();
-    return subscribe(() => {
+    const unsubLocal = subscribe(() => {
       void refresh();
     });
+    const unsubHttp = onCartChange(() => {
+      void refresh();
+    });
+    return () => {
+      unsubLocal();
+      unsubHttp();
+    };
   }, []);
 
   const count = cart?.lines.reduce((sum, line) => sum + line.qty, 0) ?? 0;

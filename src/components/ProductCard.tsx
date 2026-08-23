@@ -6,11 +6,13 @@ import { formatNaira } from "@/lib/money";
 import { openProductWhatsApp } from "@/lib/whatsapp";
 import { shopHref } from "@/lib/osNav";
 import { useSession } from "@/context/SessionProvider";
+import { useCart } from "@/context/CartProvider";
 import { canShop, isHouseStaff } from "@/lib/rbac";
 
 export default function ProductCard({ product }: { product: Product }) {
   const location = useLocation();
   const { user } = useSession();
+  const { refresh } = useCart();
   const href = shopHref(location.pathname, product.sku);
   const shopper = canShop(user);
   const showWhatsApp = !isHouseStaff(user);
@@ -28,6 +30,7 @@ export default function ProductCard({ product }: { product: Product }) {
         return;
       }
       await db.cart.add({ productId: product.id, kind: "rtw", qty: 1 });
+      await refresh();
       toast.success("Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");

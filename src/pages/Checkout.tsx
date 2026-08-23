@@ -11,6 +11,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { openPaystackCheckout } from "@/lib/paystack";
 import { HTTP_ENABLED, httpOrders, httpPayments } from "@/api/http";
+import { emitCartChange } from "@/lib/cartEvents";
 
 export default function Checkout() {
   const { cart, refresh: refreshCart } = useCart();
@@ -42,11 +43,6 @@ export default function Checkout() {
       const phone = String(data.get("phone") ?? user?.phone ?? "");
 
       if (HTTP_ENABLED) {
-        if (!user) {
-          toast.message("Sign in to complete payment securely.");
-          navigate(`/account/login?next=/checkout&email=${encodeURIComponent(email)}`);
-          return;
-        }
         const placed = await httpOrders.place({
           lines: cart.lines.map((line) => ({
             productId: line.productId,
@@ -60,10 +56,15 @@ export default function Checkout() {
           couponCode: cart.couponCode,
         });
         if ("needsLogin" in placed && placed.needsLogin) {
-          toast.message("Sign in to continue.");
+          toast.message("That email already has a client book. Sign in to continue.");
           navigate(`/account/login?next=/checkout&email=${encodeURIComponent(email)}`);
           return;
         }
+        // Guest checkout opens an account and sets cookies — refresh session before paying
+        await refresh();
+        emitCartChange();
+        await refreshCart();
+
         const orderId = placed.orderId;
         const payAmount = hasMtm ? placed.depositKobo : placed.totalKobo;
         if (choice.method === "paystack") {
@@ -82,6 +83,9 @@ export default function Checkout() {
             type: hasMtm ? "deposit" : "full",
           });
           toast.success("Receipt sent to the house.");
+        }
+        if ("accountCreated" in placed && placed.accountCreated) {
+          toast.message("We emailed your temporary password — change it after you sign in next time.");
         }
         await refreshCart();
         navigate(`/orders/thank-you/${orderId}`);
@@ -127,6 +131,11 @@ export default function Checkout() {
       <PageHero title="Checkout" crumb="Checkout" />
       <section className="mx-auto grid max-w-5xl gap-10 px-6 py-10 lg:grid-cols-2">
         <form id="checkout-form" className="space-y-4">
+          {!user ? (
+            <p className="rounded-xl border border-line bg-paper/60 px-3 py-2 text-sm text-muted">
+              No account needed to pay. We will open a client book with your email and send temporary sign-in details.
+            </p>
+          ) : null}
           <label className="block">
             <span className="os-label">Full name</span>
             <input name="name" required defaultValue={user?.name} className="mt-1 w-full border border-line px-3 py-2 text-ink" />

@@ -19,6 +19,7 @@ import AtelierFittings from "./pages/atelier/AtelierFittings";
 import AtelierProfile from "./pages/atelier/AtelierProfile";
 import AtelierQueue from "./pages/atelier/AtelierQueue";
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import StudioLogin from "./pages/auth/StudioLogin";
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/account/login" element={<Login />} />
         <Route path="/account/register" element={<Register />} />
         <Route path="/account/forgot-password" element={<ForgotPassword />} />
+        <Route path="/account/reset-password" element={<ResetPassword />} />
         <Route path="/studio/login" element={<StudioLogin />} />
 
         <Route element={<AccountGate />}>

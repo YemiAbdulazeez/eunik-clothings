@@ -24,7 +24,7 @@ describe("auth.login", () => {
 
 describe("assertCanShop / cart", () => {
   it("blocks staff from adding to bag", async () => {
-    await db.auth.login("olamide@eunik.demo", DEMO_PASSWORD);
+    await db.auth.login("olamideabolanle1@gmail.com", "#Eunik1234");
     await expect(
       db.cart.add({ productId: "sen3002", qty: 1, kind: "rtw" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -105,7 +105,7 @@ describe("production.moveStage", () => {
         dueDate: "2026-08-22",
       });
     });
-    await db.auth.login("olamide@eunik.demo", DEMO_PASSWORD);
+    await db.auth.login("olamideabolanle1@gmail.com", "#Eunik1234");
     const job = await db.production.moveStage("prod_1001", "ready");
     expect(job.stage).toBe("ready");
     const order = await db.orders.get("order_1001");
@@ -115,7 +115,7 @@ describe("production.moveStage", () => {
 
 describe("analytics.traffic ACL", () => {
   it("allows super_admin", async () => {
-    await db.auth.login("olamide@eunik.demo", DEMO_PASSWORD);
+    await db.auth.login("olamideabolanle1@gmail.com", "#Eunik1234");
     const report = await db.analytics.traffic("7d");
     expect(report.summary.views).toBeGreaterThanOrEqual(0);
   });

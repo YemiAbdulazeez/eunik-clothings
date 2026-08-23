@@ -195,6 +195,7 @@ function user(
   phone: string,
   city = "Ibadan",
   notes?: string,
+  password = DEMO_PASSWORD,
 ) {
   const lastName = name.replace(firstName, "").trim() || undefined;
   const staff = role !== "client";
@@ -212,7 +213,7 @@ function user(
   return {
     id,
     email,
-    password: DEMO_PASSWORD,
+    password,
     role,
     name,
     firstName,
@@ -268,7 +269,7 @@ export function createSeed(): DbState {
     users: [
       user("user_ade", "ade@eunik.demo", "client", "Adewale Banjo", "Ade", "0803 111 2222"),
       user("user_funmi", "funmi@eunik.demo", "client", "Funmilayo Okonkwo", "Funmi", "0805 444 5555"),
-      user("user_olamide", "olamide@eunik.demo", "super_admin", "Olasedidun Olamide A.", "Olamide", "08167073585"),
+      user("user_olamide", "olamideabolanle1@gmail.com", "super_admin", "Olasedidun Olamide A.", "Olamide", "08167073585", "Ibadan", undefined, "#Eunik1234"),
       user("user_desk", "desk@eunik.demo", "desk", "Front Desk", "Desk", "0802 000 2222"),
       user("user_designer", "designer@eunik.demo", "designer", "House Designer", "Designer", "0802 000 3333"),
       user("user_tailor", "tailor@eunik.demo", "tailor", "Floor Tailor", "Tailor", "0802 000 4444"),

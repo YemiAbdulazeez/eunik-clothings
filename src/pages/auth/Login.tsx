@@ -67,10 +67,9 @@ export default function Login() {
               <span className="os-label">Password</span>
               <input name="password" type="password" required minLength={8} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-ink" />
             </label>
-            <div className="flex justify-between text-xs">
-              <span>Presentation accounts — not production.</span>
+            <div className="flex justify-end text-xs">
               <Link to="/account/forgot-password" className="hover:underline">
-                Forgot
+                Forgot password?
               </Link>
             </div>
             <LoadingButton type="submit" loading={busy} loadingText="Signing in…" className="w-full">

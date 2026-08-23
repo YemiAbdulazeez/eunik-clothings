@@ -59,7 +59,11 @@ export default function StudioLogin() {
               <span className="os-label">Password</span>
               <input name="password" type="password" required className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-ink" />
             </label>
-            <p className="text-xs">Presentation accounts — not production.</p>
+            <div className="flex justify-end text-xs">
+              <Link to="/account/forgot-password?from=studio" className="hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <LoadingButton type="submit" loading={busy} loadingText="Signing in…" className="w-full">
               Open House
             </LoadingButton>
