@@ -462,6 +462,18 @@ export type OutboundEmail = {
   sentAt: string;
 };
 
+export type StudioOverview = {
+  revenueKobo: number;
+  awaitingReceipts: number;
+  openOrders: number;
+  lowFabrics?: number;
+  unclaimedLeads?: number;
+  mix: { rtw: number; mtm: number; bespoke: number };
+  outstandingKobo: number;
+  activeBespoke: number;
+  pipeline: Record<string, number>;
+};
+
 export type AuditLog = {
   id: string;
   at: string;

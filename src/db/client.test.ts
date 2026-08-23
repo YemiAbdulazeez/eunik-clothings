@@ -33,7 +33,8 @@ describe("assertCanShop / cart", () => {
     await db.cart.add({ productId: "sen3002", qty: 1, kind: "rtw" });
     await db.auth.login("ade@eunik.demo", DEMO_PASSWORD);
     const cart = await db.cart.get();
-    expect(cart.lines.length).toBeGreaterThan(0);
+    expect(cart).not.toBeNull();
+    expect(cart!.lines.length).toBeGreaterThan(0);
   });
 });
 

@@ -362,9 +362,11 @@ export const httpStudioSettings = {
 
 // ─── B2 — Studio: Overview ────────────────────────────────────────────────────
 
+import type { StudioOverview } from "@/db/types";
+
 export const httpOverview = {
   async get() {
-    return api("/studio/overview");
+    return api<StudioOverview>("/studio/overview");
   },
 };
 

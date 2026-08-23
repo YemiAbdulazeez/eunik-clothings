@@ -7,23 +7,18 @@ import {
   HTTP_ENABLED,
   httpAuth,
   httpProducts,
-  httpCategories,
   httpSettings,
   httpCart,
   httpOrders,
-  httpPayments,
-  httpCustom,
   httpQuotations,
   httpProduction,
   httpPeople,
-  httpAppointments,
   httpLeads,
   httpNotifications,
   httpAudit,
   httpStudioSettings,
   httpOverview,
   httpTraffic,
-  httpUploads,
 } from "../api/http";
 import {
   DEMO_PASSWORD,
@@ -54,6 +49,11 @@ import {
   type Review,
   type AnalyticsEvent,
   type TrafficSnapshot,
+  type StudioOverview,
+  type Quotation,
+  type AuditLog,
+  type Notification,
+  type ProductionOrder,
   type DbState,
 } from "./types";
 
@@ -1350,7 +1350,6 @@ export const db = {
       input: { description: string; totalKobo: number; depositKobo: number },
     ) {
       if (HTTP_ENABLED) {
-        const req = await (async () => { return null; })(); // request lookup not needed server-side
         return (await httpQuotations.create({ customerId: "", requestId, ...input })) as unknown as Quotation;
       }
       await delay();
@@ -1378,8 +1377,14 @@ export const db = {
       audit(actor.id, "quote.create", quote.number);
       return quote;
     },
-    async accept(id: string) {
-      if (HTTP_ENABLED) { await httpQuotations.accept(id); return; }
+    async accept(id: string): Promise<Order> {
+      if (HTTP_ENABLED) {
+        await httpQuotations.accept(id);
+        const orders = (await httpOrders.list()) as Order[];
+        const pending = orders.find((item) => item.status === "pending_payment" && item.kind === "bespoke");
+        if (pending) return pending;
+        throw new Error("Quote accepted — open Payments to pay your deposit.");
+      }
       await delay();
       const user = requireUser();
       const quote = getState().quotations.find((item) => item.id === id);
@@ -1511,8 +1516,14 @@ export const db = {
       }
       return getState().productionOrders;
     },
-    async moveStage(productionOrderId: string, stage: ProductionStage) {
-      if (HTTP_ENABLED) { await httpProduction.advance(productionOrderId, stage); return; }
+    async moveStage(productionOrderId: string, stage: ProductionStage): Promise<ProductionOrder> {
+      if (HTTP_ENABLED) {
+        await httpProduction.advance(productionOrderId, stage);
+        const board = (await httpProduction.list()) as ProductionOrder[];
+        const job = board.find((item) => item.id === productionOrderId);
+        if (!job) throw new Error("Production ticket not found after advance.");
+        return job;
+      }
       await delay();
       const actor = requireUser();
       if (actor.role === "client") throw new ForbiddenError();
@@ -1889,7 +1900,7 @@ export const db = {
     },
   },
   analytics: {
-    async studioOverview() {
+    async studioOverview(): Promise<StudioOverview> {
       if (HTTP_ENABLED) return httpOverview.get();
       await delay();
       assertRoles(["super_admin", "manager", "finance"], "see analytics", "analytics");
