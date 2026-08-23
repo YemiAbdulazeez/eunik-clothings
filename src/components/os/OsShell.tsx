@@ -28,6 +28,7 @@ export default function OsShell({
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("eunik_sidebar_state") === "collapsed");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
   const initials = useMemo(
     () =>
       (user?.name ?? "E")
@@ -47,7 +48,10 @@ export default function OsShell({
 
   function signOut() {
     const login = location.pathname.startsWith("/account") ? "/account/login" : "/studio/login";
-    void logout().then(() => navigate(login));
+    setSigningOut(true);
+    void logout()
+      .then(() => navigate(login))
+      .finally(() => setSigningOut(false));
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
@@ -95,9 +99,15 @@ export default function OsShell({
             </span>
             {!collapsed ? <span>Profile</span> : null}
           </NavLink>
-          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70" onClick={signOut}>
+          <button
+            type="button"
+            aria-label="Sign out"
+            disabled={signingOut}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-60"
+            onClick={signOut}
+          >
             <LogOut className="h-4 w-4" />
-            {!collapsed ? "Sign out" : null}
+            {!collapsed ? (signingOut ? "Signing out…" : "Sign out") : null}
           </button>
         </div>
       </aside>
@@ -142,9 +152,15 @@ export default function OsShell({
                 </span>
                 Profile
               </NavLink>
-              <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70" onClick={signOut}>
+              <button
+                type="button"
+                aria-label="Sign out"
+                disabled={signingOut}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-60"
+                onClick={signOut}
+              >
                 <LogOut className="h-4 w-4" />
-                Sign out
+                {signingOut ? "Signing out…" : "Sign out"}
               </button>
             </div>
           </aside>
@@ -172,6 +188,17 @@ export default function OsShell({
             {user?.role.replace("_", " ")}
           </span>
           <NotificationBell />
+          <button
+            type="button"
+            aria-label="Sign out"
+            disabled={signingOut}
+            title="Sign out"
+            className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink hover:bg-paper disabled:opacity-60"
+            onClick={signOut}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{signingOut ? "Signing out…" : "Sign out"}</span>
+          </button>
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-8 pb-28 lg:px-8">
           {children ?? <Outlet />}

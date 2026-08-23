@@ -184,6 +184,8 @@ export type MeasurementProfile = {
 export type CustomDesignRequest = {
   id: string;
   customerId: string;
+  customerName?: string;
+  customerEmail?: string;
   outfitType: string;
   occasion: string;
   colour: string;
@@ -543,7 +545,7 @@ export type DemoChip = {
 };
 
 export const DEMO_PASSWORD = "EunikHouse2026!";
-export const SEED_VERSION = 5;
+export const SEED_VERSION = 6;
 export const STORAGE_KEY = "eunik-demo-db";
 export const SESSION_KEY = "eunik-demo-session";
 export const GUEST_KEY = "eunik-guest-id";

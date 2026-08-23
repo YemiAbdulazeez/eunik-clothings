@@ -1,8 +1,10 @@
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
+import LoadingButton from "@/components/LoadingButton";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
+import { HTTP_ENABLED } from "@/api/http";
 
 export type PayChoice =
   | { method: "paystack" }
@@ -19,6 +21,7 @@ export default function PayMethods({
 }) {
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const [method, setMethod] = useState<"paystack" | "bank_transfer">("paystack");
+  const livePaystack = HTTP_ENABLED && Boolean(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) && !String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY).includes("...");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,15 +60,15 @@ export default function PayMethods({
         <button
           type="button"
           onClick={() => setMethod("paystack")}
-          className={`rounded-2xl border p-4 text-left ${method === "paystack" ? "border-ink bg-paper" : "border-line"}`}
+          className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${method === "paystack" ? "border-ink bg-paper" : "border-line"}`}
         >
           <p className="font-medium text-ink">Paystack</p>
-          <p className="text-sm">Demo — no card is charged.</p>
+          <p className="text-sm">{livePaystack ? "Card, transfer, or USSD in a secure popup." : "Demo — no card is charged."}</p>
         </button>
         <button
           type="button"
           onClick={() => setMethod("bank_transfer")}
-          className={`rounded-2xl border p-4 text-left ${method === "bank_transfer" ? "border-ink bg-paper" : "border-line"}`}
+          className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${method === "bank_transfer" ? "border-ink bg-paper" : "border-line"}`}
         >
           <p className="font-medium text-ink">Bank transfer</p>
           <p className="text-sm">Transaction number + receipt required.</p>
@@ -74,7 +77,9 @@ export default function PayMethods({
 
       {method === "paystack" ? (
         <p className="rounded-xl bg-gold/30 px-4 py-3 text-sm text-ink">
-          Demo checkout — no card is charged. We will record {formatNaira(amountKobo)} with a PAY_demo reference.
+          {livePaystack
+            ? `You will pay ${formatNaira(amountKobo)} in the Paystack window.`
+            : `Demo checkout — no card is charged. We will record ${formatNaira(amountKobo)} with a PAY_demo reference.`}
         </p>
       ) : (
         <div className="space-y-3 rounded-xl border border-line p-4 text-sm">
@@ -99,9 +104,14 @@ export default function PayMethods({
         </div>
       )}
 
-      <button type="submit" disabled={busy} className="os-pill w-full bg-ink text-white disabled:opacity-60">
-        {busy ? "Sending to the house…" : `Pay ${formatNaira(amountKobo)}`}
-      </button>
+      <LoadingButton
+        type="submit"
+        loading={busy}
+        loadingText={method === "paystack" ? "Opening Paystack…" : "Sending…"}
+        className="w-full"
+      >
+        Pay {formatNaira(amountKobo)}
+      </LoadingButton>
     </form>
   );
 }

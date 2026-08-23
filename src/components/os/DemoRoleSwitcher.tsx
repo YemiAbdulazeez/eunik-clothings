@@ -10,7 +10,7 @@ export default function DemoRoleSwitcher() {
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const navigate = useNavigate();
 
-  if (!settings?.demoMode) return null;
+  if (!settings?.demoMode || !import.meta.env.DEV || Boolean(import.meta.env.VITE_API_URL)) return null;
   const show = Boolean(user && user.role !== "client");
   if (!show) return null;
 

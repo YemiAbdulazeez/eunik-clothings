@@ -101,7 +101,7 @@ export default function StudioCollections() {
               <input name="tagline" defaultValue={editing?.tagline} className={inputClass} />
             </Field>
             <div className="md:col-span-2">
-              <ImageUpload name="image" label="Cover image" value={editing?.image} />
+              <ImageUpload name="image" label="Cover image" value={editing?.image} folder="looks" />
             </div>
             <div className="flex gap-2">
               <OsButton type="submit">Save</OsButton>

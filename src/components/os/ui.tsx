@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight, Loader2, type LucideIcon } from "lucide-react";
 
 export function PageHeader({
   eyebrow,
@@ -30,6 +30,8 @@ export function OsButton({
   variant = "ink",
   type = "button",
   disabled,
+  loading = false,
+  loadingText,
   onClick,
   className = "",
 }: {
@@ -37,25 +39,35 @@ export function OsButton({
   variant?: "ink" | "gold" | "ghost" | "danger";
   type?: "button" | "submit";
   disabled?: boolean;
+  loading?: boolean;
+  loadingText?: string;
   onClick?: () => void;
   className?: string;
 }) {
   const look =
     variant === "gold"
-      ? "bg-gold text-ink"
+      ? "bg-gold text-ink hover:bg-gold/90"
       : variant === "ghost"
-        ? "border border-line bg-white text-ink"
+        ? "border border-line bg-white text-ink hover:border-ink hover:bg-paper"
         : variant === "danger"
-          ? "bg-[var(--destructive)] text-white"
-          : "bg-ink text-white";
+          ? "bg-[var(--destructive)] text-white hover:bg-red-700"
+          : "bg-ink text-white hover:bg-ink/90";
   return (
     <button
       type={type}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       onClick={onClick}
-      className={`os-pill disabled:opacity-50 ${look} ${className}`}
+      className={`os-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-60 ${look} ${className}`}
     >
-      {children}
+      {loading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <span>{loadingText ?? "Processing…"}</span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

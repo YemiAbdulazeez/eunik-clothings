@@ -2,6 +2,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Shield } from "lucide-react";
 import { toast } from "sonner";
+import LoadingButton from "@/components/LoadingButton";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { landingPath } from "@/db/session";
@@ -15,7 +16,10 @@ export default function Login() {
   const [params] = useSearchParams();
   const [busy, setBusy] = useState(false);
   const hero = useMemo(() => HEROES[Math.floor(Math.random() * HEROES.length)], []);
-  const chips = db.auth.demoAccounts().filter((item) => item.role === "client");
+  const chips =
+    import.meta.env.DEV && !import.meta.env.VITE_API_URL
+      ? db.auth.demoAccounts().filter((item) => item.role === "client")
+      : [];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,10 +38,7 @@ export default function Login() {
 
   return (
     <div className="eunik-os grid min-h-screen lg:grid-cols-2">
-      <div
-        className="relative hidden bg-cover bg-center lg:block"
-        style={{ backgroundImage: `url(${hero})` }}
-      >
+      <div className="relative hidden bg-cover bg-center lg:block" style={{ backgroundImage: `url(${hero})` }}>
         <div className="absolute inset-0 bg-linear-to-tr from-ink/90 via-ink/70 to-gold/30" />
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
           <img src="/images/eunik.png" alt="" className="h-10 w-fit bg-white px-3 py-2" />
@@ -52,7 +53,7 @@ export default function Login() {
       </div>
       <div className="flex items-center justify-center p-6 sm:p-8">
         <div className="w-full max-w-lg">
-          <Link to="/" className="text-sm text-ink">
+          <Link to="/" className="text-sm text-ink hover:underline">
             ← Back to house
           </Link>
           <h2 className="mt-6 font-alt text-2xl text-ink">My account</h2>
@@ -68,18 +69,20 @@ export default function Login() {
             </label>
             <div className="flex justify-between text-xs">
               <span>Presentation accounts — not production.</span>
-              <Link to="/account/forgot-password">Forgot</Link>
+              <Link to="/account/forgot-password" className="hover:underline">
+                Forgot
+              </Link>
             </div>
-            <button disabled={busy} className="os-pill w-full bg-ink text-white">
+            <LoadingButton type="submit" loading={busy} loadingText="Signing in…" className="w-full">
               Enter my account
-            </button>
+            </LoadingButton>
           </form>
           <div className="mt-6 flex flex-wrap gap-2">
             {chips.map((chip) => (
               <button
                 key={chip.email}
                 type="button"
-                className="rounded-full border border-line px-3 py-1 text-xs text-ink"
+                className="rounded-full border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-paper"
                 onClick={() => {
                   const form = document.querySelector<HTMLFormElement>("form");
                   if (!form) return;
@@ -96,7 +99,7 @@ export default function Login() {
               Create account
             </Link>
             <span className="mx-2">·</span>
-            <Link to="/studio/login" className="text-muted">
+            <Link to="/studio/login" className="text-muted hover:text-ink">
               House sign in
             </Link>
           </p>

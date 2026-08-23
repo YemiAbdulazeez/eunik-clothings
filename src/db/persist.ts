@@ -2,6 +2,10 @@ import { toast } from "sonner";
 import { createSeed } from "./seed";
 import { SEED_VERSION, STORAGE_KEY, type DbState } from "./types";
 
+/** Live API mode — local demo DB must not persist or accept writes. */
+export const API_MODE = Boolean(import.meta.env.VITE_API_URL);
+const PROD_BUILD = import.meta.env.PROD;
+
 let state: DbState = createSeed();
 const listeners = new Set<() => void>();
 let quotaWarned = false;
@@ -11,6 +15,11 @@ function notify(): void {
 }
 
 export function save(): void {
+  // 2.4 — never persist the offline house file in production or when API is connected
+  if (API_MODE || PROD_BUILD) {
+    notify();
+    return;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     quotaWarned = false;
@@ -32,6 +41,12 @@ export function getState(): DbState {
 }
 
 export function mutate(recipe: (draft: DbState) => void): DbState {
+  // 2.2 — fail closed: no silent local writes while API is on
+  if (API_MODE) {
+    throw new Error(
+      "This action is not wired to the live API yet (or must not use the offline house file). Retry after the house connects the endpoint.",
+    );
+  }
   const next = structuredClone(state);
   recipe(next);
   state = next;
@@ -47,11 +62,24 @@ export function subscribe(listener: () => void): () => void {
 }
 
 export function replaceState(next: DbState): void {
+  if (API_MODE) {
+    throw new Error("Cannot reset the offline house file while the live API is connected.");
+  }
   state = next;
   save();
 }
 
 export function bootStore(): void {
+  // Production / API: in-memory seed only (no password-bearing localStorage restore)
+  if (API_MODE || PROD_BUILD) {
+    state = createSeed();
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {

@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import LoadingButton from "@/components/LoadingButton";
 import PageHero from "@/components/PageHero";
-import StaffShopGuard from "@/components/StaffShopGuard";
+import RequireClient from "@/components/RequireClient";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 
@@ -39,11 +40,12 @@ export default function Bespoke() {
   }
 
   return (
-    <StaffShopGuard>
+    <RequireClient>
       <PageHero title="Bespoke" crumb="Bespoke" />
       <section className="mx-auto max-w-xl px-6 py-12">
         <h2 className="font-alt text-3xl text-ink">Tell the house what to cut.</h2>
         <p className="mt-2">We quote in naira, then you accept and pay a deposit — Paystack or transfer.</p>
+        <p className="mt-2 text-sm">Signed in as {user?.email}</p>
         <form onSubmit={(event) => void submit(event)} className="mt-8 space-y-4">
           <label className="block">
             <span className="os-label">Outfit</span>
@@ -75,11 +77,11 @@ export default function Bespoke() {
             <span className="os-label">Notes</span>
             <textarea name="description" rows={4} className="mt-1 w-full border border-line px-3 py-2 text-ink" />
           </label>
-          <button disabled={busy} className="os-pill bg-ink text-white">
+          <LoadingButton type="submit" loading={busy} loadingText="Sending…">
             Send request
-          </button>
+          </LoadingButton>
         </form>
       </section>
-    </StaffShopGuard>
+    </RequireClient>
   );
 }

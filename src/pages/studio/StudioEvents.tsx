@@ -76,7 +76,7 @@ export default function StudioEvents() {
             <Field label="Location">
               <input name="location" defaultValue={current?.location ?? "Eunik HQ, Ibadan"} className={inputClass} />
             </Field>
-            <ImageUpload name="image" label="Poster" value={current?.image} />
+            <ImageUpload name="image" label="Poster" value={current?.image} folder="events" />
             <Field label="Description">
               <textarea name="description" rows={3} defaultValue={current?.description} className={inputClass} />
             </Field>

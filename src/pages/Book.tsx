@@ -1,13 +1,16 @@
 import { type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import LoadingButton from "@/components/LoadingButton";
 import PageHero from "@/components/PageHero";
-import StaffShopGuard from "@/components/StaffShopGuard";
+import RequireClient from "@/components/RequireClient";
+import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { trackEvent } from "@/lib/track";
 
 export default function Book() {
+  const { user } = useSession();
   const [busy, setBusy] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
   const [params] = useSearchParams();
@@ -19,12 +22,13 @@ export default function Book() {
 
   async function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
+    if (!user) return;
     const data = new FormData(formEvent.currentTarget);
     setBusy(true);
     try {
       const notes = [String(data.get("notes") ?? ""), event ? `Event: ${event.name}` : ""].filter(Boolean).join(" · ");
       const row = await db.appointments.create({
-        customerName: String(data.get("name") ?? ""),
+        customerName: String(data.get("name") ?? user.name),
         service: String(data.get("service") ?? "Consultation"),
         date: String(data.get("date") ?? ""),
         time: String(data.get("time") ?? ""),
@@ -43,7 +47,7 @@ export default function Book() {
   }
 
   return (
-    <StaffShopGuard>
+    <RequireClient>
       <PageHero title="Book the house" crumb="Book" />
       <section className="mx-auto max-w-xl px-6 py-12">
         {event ? (
@@ -54,16 +58,24 @@ export default function Book() {
         {reference ? (
           <div className="mb-6 rounded-2xl border border-gold/40 bg-paper px-4 py-4 text-sm">
             <p className="font-medium text-ink">Request received</p>
-            <p className="mt-1">Reference <span className="font-mono">{reference}</span> — desk will confirm by phone or email.</p>
-            <Link to="/track" className="mt-2 inline-block underline">
-              Track an order
+            <p className="mt-1">
+              Reference <span className="font-mono">{reference}</span> — desk will confirm by phone or email.
+            </p>
+            <Link to="/account/appointments" className="mt-2 inline-block underline hover:opacity-70">
+              View my bookings
             </Link>
           </div>
         ) : null}
+        <p className="mb-4 text-sm">Signed in as {user?.email}</p>
         <form onSubmit={(event) => void submit(event)} className="space-y-4">
           <label className="block">
             <span className="os-label">Name</span>
-            <input name="name" required className="mt-1 w-full border border-line px-3 py-2 text-ink" />
+            <input
+              name="name"
+              required
+              defaultValue={user?.name}
+              className="mt-1 w-full border border-line px-3 py-2 text-ink"
+            />
           </label>
           <label className="block">
             <span className="os-label">Service</span>
@@ -85,11 +97,11 @@ export default function Book() {
             <span className="os-label">Notes</span>
             <textarea name="notes" className="mt-1 w-full border border-line px-3 py-2 text-ink" />
           </label>
-          <button disabled={busy} className="os-pill bg-ink text-white">
+          <LoadingButton type="submit" loading={busy} loadingText="Requesting…">
             Request appointment
-          </button>
+          </LoadingButton>
         </form>
       </section>
-    </StaffShopGuard>
+    </RequireClient>
   );
 }

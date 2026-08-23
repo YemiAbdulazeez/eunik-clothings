@@ -31,7 +31,10 @@ async function api<T = unknown>(
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return null as T;
@@ -176,6 +179,13 @@ export const httpCart = {
   async removeLine(lineId: string) {
     await api(`/cart/lines/${lineId}`, { method: "DELETE" });
   },
+  async updateQty(lineId: string, qty: number) {
+    const data = await api<{ cart: unknown }>(`/cart/lines/${lineId}`, {
+      method: "PATCH",
+      body: { qty },
+    });
+    return data.cart;
+  },
   async clear() {
     await api("/cart", { method: "DELETE" });
   },
@@ -210,6 +220,9 @@ export const httpOrders = {
   async track(number: string) {
     const data = await api<{ order: unknown }>(`/orders/track/${number}`);
     return data.order;
+  },
+  async updateStatus(id: string, status: string) {
+    await api(`/orders/${id}/status`, { method: "PATCH", body: { status } });
   },
 };
 
@@ -249,6 +262,21 @@ export const httpCustom = {
   },
   async updateRequestStatus(id: string, status: "new" | "quoted" | "closed") {
     await api(`/studio/custom/${id}`, { method: "PATCH", body: { status } });
+  },
+  async create(payload: {
+    outfitType?: string;
+    occasion?: string;
+    colour?: string;
+    budget?: string;
+    deliveryDate?: string;
+    description: string;
+    consultation?: string;
+  }) {
+    return api<Record<string, unknown>>("/custom-requests", { method: "POST", body: payload });
+  },
+  async listMine() {
+    const data = await api<{ requests: unknown[] }>("/custom-requests/mine");
+    return data.requests;
   },
 };
 
@@ -310,6 +338,32 @@ export const httpAppointments = {
   async setStatus(id: string, status: string) {
     await api(`/studio/appointments/${id}/status`, { method: "PATCH", body: { status } });
   },
+  async create(payload: {
+    customerName: string;
+    service: string;
+    date: string;
+    time: string;
+    location?: string;
+    notes?: string;
+  }) {
+    return api<{ id: string; reference: string }>("/appointments", { method: "POST", body: payload });
+  },
+  async listMine() {
+    const data = await api<{ appointments: unknown[] }>("/appointments/mine");
+    return data.appointments;
+  },
+};
+
+export const httpPublic = {
+  async newsletter(email: string) {
+    await api("/newsletter", { method: "POST", body: { email } });
+  },
+  async ticket(payload: { name: string; email: string; phone?: string; subject?: string; message: string }) {
+    return api<{ id: string }>("/tickets", { method: "POST", body: payload });
+  },
+  async lead(payload: { productId?: string; sku?: string }) {
+    return api<{ id: string }>("/leads", { method: "POST", body: payload });
+  },
 };
 
 // ─── B2 — Studio: Leads ───────────────────────────────────────────────────────
@@ -356,7 +410,8 @@ export const httpStudioSettings = {
     return data.settings;
   },
   async update(patch: Record<string, unknown>) {
-    await api("/studio/settings", { method: "PATCH", body: patch });
+    const data = await api<{ settings: unknown }>("/studio/settings", { method: "PATCH", body: patch });
+    return data.settings;
   },
 };
 
@@ -407,6 +462,10 @@ export const httpContent = {
     const data = await api<{ homepage: unknown }>("/homepage");
     return data.homepage;
   },
+  async lookbook() {
+    const data = await api<{ lookbook: unknown[] }>("/lookbook");
+    return data.lookbook;
+  },
   async journal() {
     const data = await api<{ posts: unknown[] }>("/journal");
     return data.posts;
@@ -418,5 +477,51 @@ export const httpContent = {
   async event(slug: string) {
     const data = await api<{ event: unknown }>(`/events/${slug}`);
     return data.event;
+  },
+  async updateHomepage(patch: Record<string, unknown>) {
+    const data = await api<{ homepage: unknown }>("/studio/content/homepage", { method: "PATCH", body: patch });
+    return data.homepage;
+  },
+  async saveLookbook(item: Record<string, unknown>) {
+    if (item.id) {
+      const data = await api<{ lookbook: unknown }>(`/studio/content/lookbook/${item.id}`, {
+        method: "PATCH",
+        body: item,
+      });
+      return data.lookbook;
+    }
+    const data = await api<{ lookbook: unknown }>("/studio/content/lookbook", { method: "POST", body: item });
+    return data.lookbook;
+  },
+  async removeLookbook(id: string) {
+    await api(`/studio/content/lookbook/${id}`, { method: "DELETE" });
+  },
+  async saveJournal(post: Record<string, unknown> & { id?: string }) {
+    if (post.id) {
+      const data = await api<{ post: unknown }>(`/studio/content/journal/${post.id}`, {
+        method: "PATCH",
+        body: post,
+      });
+      return data.post;
+    }
+    const data = await api<{ post: unknown }>("/studio/content/journal", { method: "POST", body: post });
+    return data.post;
+  },
+  async removeJournal(id: string) {
+    await api(`/studio/content/journal/${id}`, { method: "DELETE" });
+  },
+  async saveEvent(event: Record<string, unknown> & { id?: string }) {
+    if (event.id) {
+      const data = await api<{ event: unknown }>(`/studio/content/events/${event.id}`, {
+        method: "PATCH",
+        body: event,
+      });
+      return data.event;
+    }
+    const data = await api<{ event: unknown }>("/studio/content/events", { method: "POST", body: event });
+    return data.event;
+  },
+  async removeEvent(id: string) {
+    await api(`/studio/content/events/${id}`, { method: "DELETE" });
   },
 };

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { toast } from "sonner";
 import PayMethods from "@/components/PayMethods";
 import { PageHeader, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
@@ -5,28 +6,56 @@ import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { formatWhen, statusLabel, statusTone } from "@/lib/format";
+import { openPaystackCheckout } from "@/lib/paystack";
+import { HTTP_ENABLED, httpPayments } from "@/api/http";
+import { useSession } from "@/context/SessionProvider";
 
 export default function AccountPayments() {
+  const { user } = useSession();
   const { data: orders, reload: refreshOrders } = useAsync(() => db.orders.listMine(), []);
   const { data: payments, reload: refreshPayments } = useAsync(() => db.payments.list(), []);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const dues = (orders ?? []).filter((item) => item.paidKobo < item.totalKobo && item.status !== "cancelled");
   const settled = (payments ?? []).filter((item) => item.status === "successful").reduce((sum, item) => sum + item.amountKobo, 0);
   const openTotal = dues.reduce((sum, item) => sum + (item.totalKobo - item.paidKobo), 0);
 
   async function payDue(orderId: string, choice: Parameters<typeof db.orders.payBalance>[1]) {
+    setBusyId(orderId);
     try {
-      await db.orders.payBalance(orderId, choice);
+      const order = (orders ?? []).find((item) => item.id === orderId);
+      const due = order ? order.totalKobo - order.paidKobo : 0;
+      if (choice.method === "paystack" && HTTP_ENABLED && order) {
+        const result = await openPaystackCheckout({
+          orderId,
+          email: user?.email ?? order.customerEmail,
+          amountKobo: due,
+          type: order.paidKobo > 0 ? "balance" : order.kind === "bespoke" ? "deposit" : "full",
+        });
+        toast.success(result.demo ? "Demo Paystack recorded." : "Payment successful.");
+      } else if (choice.method === "bank_transfer" && HTTP_ENABLED) {
+        await httpPayments.submitTransfer({
+          orderId,
+          transactionNumber: choice.transactionNumber,
+          receiptUrl: choice.receiptDataUrl,
+          type: "balance",
+        });
+        toast.success("Receipt submitted.");
+      } else {
+        await db.orders.payBalance(orderId, choice);
+        toast.success(choice.method === "paystack" ? "Demo Paystack recorded." : "Receipt submitted.");
+      }
       await refreshOrders();
       await refreshPayments();
-      toast.success(choice.method === "paystack" ? "Demo Paystack recorded." : "Receipt submitted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Payment failed.");
+    } finally {
+      setBusyId(null);
     }
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payments" subtitle="Paystack (demo) or bank transfer with a receipt. Naira only." />
+      <PageHeader title="Payments" subtitle="Paystack popup or bank transfer with a receipt. Naira only." />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Settled" value={formatNaira(settled)} />
         <StatCard label="Open balance" value={formatNaira(openTotal)} tone={openTotal ? "gold" : "plain"} />
@@ -40,7 +69,7 @@ export default function AccountPayments() {
             </p>
             <PayMethods
               amountKobo={due.totalKobo - due.paidKobo}
-              busy={false}
+              busy={busyId === due.id}
               onPay={(choice) => payDue(due.id, choice)}
             />
           </SectionCard>

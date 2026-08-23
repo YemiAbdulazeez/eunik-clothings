@@ -1,50 +1,177 @@
+import { type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { OsButton, PageHeader, SectionCard } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
+import { nairaToKobo } from "@/lib/money";
 
 export default function StudioSettings() {
   const navigate = useNavigate();
   const { user } = useSession();
-  const { data: settings } = useAsync(() => db.settings.get(), []);
-  const { data: logs } = useAsync(() => (user?.role === "super_admin" || user?.role === "manager" ? db.audit.list() : Promise.resolve([])), [user?.role]);
+  const isPrincipal = user?.role === "super_admin";
+  const { data: settings, reload } = useAsync(() => db.settings.get(), []);
+  const { data: logs } = useAsync(
+    () => (isPrincipal || user?.role === "manager" ? db.audit.list() : Promise.resolve([])),
+    [user?.role],
+  );
 
   async function reset() {
-    if (!window.confirm("Reset all presentation data to Ade’s sewing story?")) return;
+    if (!window.confirm("Reset local presentation data? Live Postgres data is not wiped.")) return;
     await db.reset();
-    toast.success("Demo reset. Sign in again.");
+    toast.success("Local store reset. Sign in again.");
     navigate("/studio/login");
   }
 
-  async function toggleDemo() {
-    if (!settings) return;
-    await db.settings.update({ demoMode: !settings.demoMode });
-    toast.success(settings.demoMode ? "Demo switcher hidden." : "Demo switcher visible.");
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isPrincipal || !settings) return;
+    const data = new FormData(event.currentTarget);
+    const freeShippingNaira = Number(data.get("freeShippingNaira") || 0);
+    await db.settings.update({
+      company: String(data.get("company") ?? ""),
+      rc: String(data.get("rc") ?? ""),
+      phone: String(data.get("phone") ?? ""),
+      email: String(data.get("email") ?? ""),
+      whatsapp: String(data.get("whatsapp") ?? ""),
+      instagram: String(data.get("instagram") ?? ""),
+      siteUrl: String(data.get("siteUrl") ?? ""),
+      address: String(data.get("address") ?? ""),
+      pickupLocation: String(data.get("pickupLocation") ?? ""),
+      aboutJoinLine: String(data.get("aboutJoinLine") ?? ""),
+      depositPercent: Number(data.get("depositPercent") || 50),
+      freeShippingKobo: nairaToKobo(freeShippingNaira),
+      demoMode: data.get("demoMode") === "on",
+      bank: {
+        bankName: String(data.get("bankName") ?? ""),
+        accountName: String(data.get("accountName") ?? ""),
+        accountNumber: String(data.get("accountNumber") ?? ""),
+        narrationHint: String(data.get("narrationHint") ?? ""),
+      },
+    });
+    toast.success("House settings saved.");
+    reload();
   }
+
+  if (!settings) return null;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" subtitle="House presentation controls. Contact details live in Content." />
-      <SectionCard title="Demo">
-        <p className="text-sm">Storage key eunik-demo-db. Reset restores Ade #1001, Funmi’s transfer, and the cutting rail.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <OsButton onClick={() => void reset()}>Reset presentation data</OsButton>
-          {user?.role === "super_admin" ? (
-            <OsButton variant="ghost" onClick={() => void toggleDemo()}>
-              Demo mode: {settings?.demoMode ? "on" : "off"}
-            </OsButton>
-          ) : null}
+      <PageHeader
+        title="Settings"
+        subtitle={
+          isPrincipal
+            ? "Company profile, bank details, and house defaults. Changes apply across the site."
+            : "House presentation. Only the principal can edit company and bank details."
+        }
+      />
+
+      {isPrincipal ? (
+        <form onSubmit={(event) => void save(event)} className="space-y-6">
+          <SectionCard title="Company">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Company name">
+                <input name="company" defaultValue={settings.company} required className={inputClass} />
+              </Field>
+              <Field label="RC number">
+                <input name="rc" defaultValue={settings.rc} className={inputClass} />
+              </Field>
+              <Field label="Phone">
+                <input name="phone" defaultValue={settings.phone} className={inputClass} />
+              </Field>
+              <Field label="Email">
+                <input name="email" type="email" defaultValue={settings.email} className={inputClass} />
+              </Field>
+              <Field label="WhatsApp (digits)">
+                <input name="whatsapp" defaultValue={settings.whatsapp} className={inputClass} />
+              </Field>
+              <Field label="Instagram URL">
+                <input name="instagram" defaultValue={settings.instagram} className={inputClass} />
+              </Field>
+              <Field label="Site URL">
+                <input name="siteUrl" defaultValue={settings.siteUrl} className={inputClass} />
+              </Field>
+              <Field label="Address">
+                <input name="address" defaultValue={settings.address} className={inputClass} />
+              </Field>
+              <Field label="Pickup location">
+                <input name="pickupLocation" defaultValue={settings.pickupLocation} className={inputClass} />
+              </Field>
+              <Field label="About / trust line">
+                <input name="aboutJoinLine" defaultValue={settings.aboutJoinLine} className={inputClass} />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Bank account (checkout transfers)">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Bank name">
+                <input name="bankName" defaultValue={settings.bank.bankName} required className={inputClass} />
+              </Field>
+              <Field label="Account name">
+                <input name="accountName" defaultValue={settings.bank.accountName} required className={inputClass} />
+              </Field>
+              <Field label="Account number">
+                <input name="accountNumber" defaultValue={settings.bank.accountNumber} required className={inputClass} />
+              </Field>
+              <Field label="Narration hint">
+                <input name="narrationHint" defaultValue={settings.bank.narrationHint} className={inputClass} />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Orders & shipping">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Deposit percent">
+                <input
+                  name="depositPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={settings.depositPercent}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Free shipping from (₦)">
+                <input
+                  name="freeShippingNaira"
+                  type="number"
+                  min={0}
+                  defaultValue={Math.round(settings.freeShippingKobo / 100)}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+            <label className="mt-4 flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" name="demoMode" defaultChecked={settings.demoMode} />
+              Demo mode (presentation switcher / banners)
+            </label>
+          </SectionCard>
+
+          <OsButton type="submit">Save settings</OsButton>
+        </form>
+      ) : (
+        <SectionCard title="House">
+          <p className="text-ink">{settings.company}</p>
+          <p className="text-sm">
+            RC {settings.rc} · {settings.pickupLocation}
+          </p>
+          <p className="mt-2 text-sm text-muted">Ask the house principal to change company or bank details.</p>
+        </SectionCard>
+      )}
+
+      <SectionCard title="Local presentation">
+        <p className="text-sm">
+          Reset only clears the browser demo store. Live catalog, settings, and orders stay in Postgres.
+        </p>
+        <div className="mt-4">
+          <OsButton variant="ghost" onClick={() => void reset()}>
+            Reset local presentation data
+          </OsButton>
         </div>
       </SectionCard>
-      <SectionCard title="House">
-        <p className="text-ink">{settings?.company}</p>
-        <p className="text-sm">
-          RC {settings?.rc} · {settings?.pickupLocation}
-        </p>
-        {settings?.demoToday ? <p className="mt-2 text-xs text-muted">Demo “today” anchor: {settings.demoToday}</p> : null}
-      </SectionCard>
+
       {logs && logs.length > 0 ? (
         <SectionCard title="Audit log">
           <div className="max-h-80 overflow-y-auto">

@@ -43,9 +43,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return next;
       },
       logout: async () => {
-        await db.auth.logout();
-        setUser(null);
-        setSession(null);
+        try {
+          await db.auth.logout();
+        } finally {
+          setUser(null);
+          setSession(null);
+        }
       },
       refresh,
     }),

@@ -197,10 +197,10 @@ function ProductForm({
         </SectionCard>
         <div className="space-y-4">
           <SectionCard title="Images">
-            <ImageUploadList label="Garment photos" values={images} onChange={setImages} />
+            <ImageUploadList label="Garment photos" values={images} onChange={setImages} folder="looks" />
             {!images.length ? (
               <div className="mt-3">
-                <ImageUpload label="First photo" onChange={(url) => setImages([url])} />
+                <ImageUpload label="First photo" folder="looks" onChange={(url) => setImages([url])} />
               </div>
             ) : null}
             <p className="mt-2 flex items-center gap-2 text-xs">

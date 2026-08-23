@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/os/ImageUpload";
 import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { slugify } from "@/lib/format";
@@ -64,6 +65,8 @@ function HomeForm({ home }: { home: Awaited<ReturnType<typeof db.content.homepag
     toast.success("Homepage saved. Open Home to see it.");
   }
 
+  const heroSlides = [0, 1, 2].map((index) => home.hero[index] ?? { title: "", subtitle: "", image: "", to: "" });
+
   return (
     <form onSubmit={(event) => void save(event)} className="space-y-6">
       <SectionCard title="Sections">
@@ -98,11 +101,11 @@ function HomeForm({ home }: { home: Awaited<ReturnType<typeof db.content.homepag
       </SectionCard>
       <SectionCard title="Hero slides">
         <div className="grid gap-4">
-          {home.hero.map((slide, index) => (
-            <div key={slide.title} className="grid gap-3 rounded-xl border border-line p-3 md:grid-cols-2">
+          {heroSlides.map((slide, index) => (
+            <div key={index} className="grid gap-3 rounded-xl border border-line p-3 md:grid-cols-2">
               <input name={`heroTitle${index}`} defaultValue={slide.title} className={inputClass} placeholder="Title" />
               <input name={`heroSubtitle${index}`} defaultValue={slide.subtitle} className={inputClass} placeholder="Subtitle" />
-              <ImageUpload name={`heroImage${index}`} label="Slide image" value={slide.image} />
+              <ImageUpload name={`heroImage${index}`} label="Slide image" value={slide.image} folder="looks" />
               <input name={`heroTo${index}`} defaultValue={slide.to} className={inputClass} placeholder="/path" />
             </div>
           ))}
@@ -147,7 +150,7 @@ function JournalManager({ posts }: { posts: Awaited<ReturnType<typeof db.content
       <SectionCard title="Add story">
         <form onSubmit={(event) => void add(event)} className="space-y-3">
           <input name="title" required placeholder="Title" className={inputClass} />
-          <ImageUpload name="image" label="Cover image" value="/images/sen3007.jpg" />
+          <ImageUpload name="image" label="Cover image" value="/images/sen3007.jpg" folder="looks" />
           <input name="excerpt" placeholder="Excerpt" className={inputClass} />
           <textarea name="content" rows={4} placeholder="Body" className={inputClass} />
           <OsButton type="submit">Publish</OsButton>
@@ -189,7 +192,7 @@ function LookbookManager({ items }: { items: Awaited<ReturnType<typeof db.conten
       <SectionCard title="Add tile">
         <form onSubmit={(event) => void add(event)} className="space-y-3">
           <input name="title" required placeholder="Title" className={inputClass} />
-          <ImageUpload name="image" label="Tile image" value="/images/ara5003.jpg" />
+          <ImageUpload name="image" label="Tile image" value="/images/ara5003.jpg" folder="looks" />
           <select name="collection" className={inputClass}>
             <option value="aranbada">Ara'nbada</option>
             <option value="senator">Senator</option>
@@ -207,73 +210,28 @@ function LookbookManager({ items }: { items: Awaited<ReturnType<typeof db.conten
 }
 
 function ContactForm({ mail }: { mail: { id: string; to: string; subject: string; sentAt: string }[] }) {
+  const { user } = useSession();
   const { data: settings } = useAsync(() => db.settings.get(), []);
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    await db.settings.update({
-      phone: String(data.get("phone")),
-      email: String(data.get("email")),
-      whatsapp: String(data.get("whatsapp")),
-      instagram: String(data.get("instagram")),
-      address: String(data.get("address")),
-      pickupLocation: String(data.get("pickupLocation")),
-      aboutJoinLine: String(data.get("aboutJoinLine")),
-      bank: {
-        bankName: String(data.get("bankName")),
-        accountName: String(data.get("accountName")),
-        accountNumber: String(data.get("accountNumber")),
-        narrationHint: String(data.get("narrationHint")),
-      },
-    });
-    toast.success("Contact details published to the house.");
-  }
   if (!settings) return null;
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <form onSubmit={(event) => void save(event)} className="space-y-4">
-        <SectionCard title="Public contact">
-          <Field label="Phone">
-            <input name="phone" defaultValue={settings.phone} className={inputClass} />
-          </Field>
-          <Field label="Email">
-            <input name="email" defaultValue={settings.email} className={inputClass} />
-          </Field>
-          <Field label="WhatsApp">
-            <input name="whatsapp" defaultValue={settings.whatsapp} className={inputClass} />
-          </Field>
-          <Field label="Instagram URL">
-            <input name="instagram" defaultValue={settings.instagram} className={inputClass} />
-          </Field>
-          <Field label="Address">
-            <input name="address" defaultValue={settings.address} className={inputClass} />
-          </Field>
-          <Field label="Pickup line">
-            <input name="pickupLocation" defaultValue={settings.pickupLocation} className={inputClass} />
-          </Field>
-          <Field label="About trust line">
-            <input name="aboutJoinLine" defaultValue={settings.aboutJoinLine} className={inputClass} />
-          </Field>
-        </SectionCard>
-        <SectionCard title="House bank (checkout)">
-          <Field label="Bank">
-            <input name="bankName" defaultValue={settings.bank.bankName} className={inputClass} />
-          </Field>
-          <Field label="Account name">
-            <input name="accountName" defaultValue={settings.bank.accountName} className={inputClass} />
-          </Field>
-          <Field label="Account number">
-            <input name="accountNumber" defaultValue={settings.bank.accountNumber} className={inputClass} />
-          </Field>
-          <Field label="Narration">
-            <input name="narrationHint" defaultValue={settings.bank.narrationHint} className={inputClass} />
-          </Field>
-          <OsButton type="submit" className="mt-3">
-            Save contact
-          </OsButton>
-        </SectionCard>
-      </form>
-      <SectionCard title="Outbound house mail (demo)">
+      <SectionCard title="Public contact (read from Settings)">
+        <p className="text-sm text-ink">{settings.company}</p>
+        <p className="mt-2 text-sm">{settings.phone}</p>
+        <p className="text-sm">{settings.email}</p>
+        <p className="text-sm">{settings.address}</p>
+        <p className="mt-4 text-sm text-muted">
+          {user?.role === "super_admin"
+            ? "Edit company, bank, and deposit rules in Studio → Settings."
+            : "Only the house principal can change these in Settings."}
+        </p>
+        {user?.role === "super_admin" ? (
+          <a href="/studio/settings" className="os-pill mt-4 inline-flex bg-ink text-white">
+            Open Settings
+          </a>
+        ) : null}
+      </SectionCard>
+      <SectionCard title="Outbound house mail">
         {mail.length === 0 ? <p className="text-sm">No checkout welcome letters yet.</p> : null}
         <ul className="space-y-3 text-sm">
           {mail.map((item) => (

@@ -157,9 +157,51 @@ export function landingPathForUser(user: PublicUser): string {
 
 export function postLoginPath(user: PublicUser, next?: string | null): string {
   if (user.role !== "client") return landingPathForUser(user);
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/account";
-  if (next.startsWith("/studio") || next.startsWith("/atelier")) return "/account";
-  return next;
+  if (!next) return "/account";
+
+  let path = next.trim();
+  try {
+    // Absolute or protocol-relative → reject
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path) || path.startsWith("//")) return "/account";
+    if (path.includes("\\") || path.includes("@")) return "/account";
+    // Normalize and ensure same-origin relative path
+    const url = new URL(path, "https://eunik.local");
+    if (url.origin !== "https://eunik.local") return "/account";
+    path = url.pathname + url.search + url.hash;
+  } catch {
+    return "/account";
+  }
+
+  if (!path.startsWith("/") || path.startsWith("//")) return "/account";
+  if (path.startsWith("/studio") || path.startsWith("/atelier")) return "/account";
+
+  const allowed =
+    path === "/" ||
+    path.startsWith("/account") ||
+    path.startsWith("/checkout") ||
+    path.startsWith("/cart") ||
+    path.startsWith("/shop") ||
+    path.startsWith("/bespoke") ||
+    path.startsWith("/book") ||
+    path.startsWith("/made-to-measure") ||
+    path.startsWith("/orders") ||
+    path.startsWith("/product") ||
+    path.startsWith("/journal") ||
+    path.startsWith("/events") ||
+    path.startsWith("/lookbook") ||
+    path.startsWith("/collection") ||
+    path.startsWith("/men-") ||
+    path.startsWith("/agbada") ||
+    path.startsWith("/aranbada") ||
+    path.startsWith("/senator") ||
+    path.startsWith("/esiki") ||
+    path.startsWith("/suit") ||
+    path.startsWith("/search") ||
+    path.startsWith("/track") ||
+    path.startsWith("/contact") ||
+    path.startsWith("/about");
+
+  return allowed ? path : "/account";
 }
 
 export function sectionForPath(pathname: string): NavSection {

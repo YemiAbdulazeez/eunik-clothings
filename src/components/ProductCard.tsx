@@ -38,9 +38,10 @@ export default function ProductCard({ product }: { product: Product }) {
     <button
       type="button"
       onClick={() => void add()}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-3 py-2 text-[13px] text-ink"
+      className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-2 text-[13px] text-white hover:bg-gold"
+      
     >
-      <ShoppingBag className="h-4 w-4" />
+      <ShoppingBag className="h-4 w-4 mr-2" />
       {product.priceOnRequest ? "Request price" : "Add to bag"}
     </button>
   ) : null;
@@ -49,7 +50,7 @@ export default function ProductCard({ product }: { product: Product }) {
     <button
       type="button"
       onClick={() => void openProductWhatsApp(product)}
-      className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-2 text-[13px] text-white"
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-black px-3 py-2 text-[13px] hover:text-white hover:bg-green-600 border-2 hover:border-green-600"
     >
       WhatsApp
     </button>

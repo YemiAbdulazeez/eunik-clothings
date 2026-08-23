@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, CreditCard, Headphones, Package, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import LazyImage from "@/components/LazyImage";
 import ProductGrid from "@/components/ProductGrid";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -70,7 +71,7 @@ export default function Home() {
           />
         ))}
         {active ? (
-          <div className="relative z-10 flex h-full max-w-[1600px] flex-col justify-center px-4 lg:px-10">
+          <div className="relative z-10 flex h-full max-w-[1600px] flex-col justify-center px-4 lg:px-48">
             <p className="animate-fade-up mb-6 font-alt text-xl text-ink">
               <span className="highlight">Discount on selected collection!</span>
             </p>
@@ -233,7 +234,12 @@ export default function Home() {
             {magazine.map((post) => (
               <article key={post.id}>
                 <Link to={`/journal/${post.slug}`}>
-                  <img src={post.image} alt="" className="mb-6 aspect-[4/5] w-full object-cover" />
+                  <LazyImage
+                    src={post.image}
+                    alt=""
+                    className="aspect-[4/5] w-full object-cover"
+                    aspectClassName="mb-6 aspect-[4/5] w-full"
+                  />
                 </Link>
                 <p className="mb-2 text-sm">
                   By <span className="font-medium text-ink">{post.author}</span>
@@ -246,7 +252,7 @@ export default function Home() {
                   </span>
                 </p>
                 <Link to={`/journal/${post.slug}`}>
-                  <h3 className="font-alt text-xl leading-7 font-medium text-ink">{post.title}</h3>
+                  <h3 className="font-alt text-xl leading-7 font-medium text-ink hover:underline">{post.title}</h3>
                 </Link>
               </article>
             ))}

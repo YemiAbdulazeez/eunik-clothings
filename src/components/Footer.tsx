@@ -38,7 +38,9 @@ export default function Footer() {
   async function handleNewsletter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const subscriber = String(new FormData(form).get("email") ?? "");
+    const data = new FormData(form);
+    if (String(data.get("website") ?? "").trim()) return;
+    const subscriber = String(data.get("email") ?? "");
     if (!subscriber) return;
     await db.newsletter.subscribe(subscriber);
     setStatus("Thanks for joining Eunik.");
@@ -149,6 +151,14 @@ export default function Footer() {
             <p className="mb-2 text-[17px] font-medium text-white">Become a customer</p>
             <p className="mb-4">Join now and get 20% extra discount!</p>
             <form onSubmit={(event) => void handleNewsletter(event)} className="relative">
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute left-[-9999px] h-0 w-0 opacity-0"
+              />
               <input
                 type="email"
                 name="email"

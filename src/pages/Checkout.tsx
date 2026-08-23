@@ -9,6 +9,8 @@ import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
+import { openPaystackCheckout } from "@/lib/paystack";
+import { HTTP_ENABLED, httpOrders, httpPayments } from "@/api/http";
 
 export default function Checkout() {
   const { cart, refresh: refreshCart } = useCart();
@@ -38,6 +40,54 @@ export default function Checkout() {
       const email = String(data.get("email") ?? user?.email ?? "");
       const name = String(data.get("name") ?? user?.name ?? "Guest");
       const phone = String(data.get("phone") ?? user?.phone ?? "");
+
+      if (HTTP_ENABLED) {
+        if (!user) {
+          toast.message("Sign in to complete payment securely.");
+          navigate(`/account/login?next=/checkout&email=${encodeURIComponent(email)}`);
+          return;
+        }
+        const placed = await httpOrders.place({
+          lines: cart.lines.map((line) => ({
+            productId: line.productId,
+            variantId: line.variantId,
+            kind: line.kind,
+            qty: line.qty,
+          })),
+          customer: { name, email, phone },
+          fulfillment,
+          address: String(data.get("address") ?? ""),
+          couponCode: cart.couponCode,
+        });
+        if ("needsLogin" in placed && placed.needsLogin) {
+          toast.message("Sign in to continue.");
+          navigate(`/account/login?next=/checkout&email=${encodeURIComponent(email)}`);
+          return;
+        }
+        const orderId = placed.orderId;
+        const payAmount = hasMtm ? placed.depositKobo : placed.totalKobo;
+        if (choice.method === "paystack") {
+          const result = await openPaystackCheckout({
+            orderId,
+            email,
+            amountKobo: payAmount,
+            type: hasMtm ? "deposit" : "full",
+          });
+          toast.success(result.demo ? "Demo Paystack recorded." : "Payment successful.");
+        } else {
+          await httpPayments.submitTransfer({
+            orderId,
+            transactionNumber: choice.transactionNumber,
+            receiptUrl: choice.receiptDataUrl,
+            type: hasMtm ? "deposit" : "full",
+          });
+          toast.success("Receipt sent to the house.");
+        }
+        await refreshCart();
+        navigate(`/orders/thank-you/${orderId}`);
+        return;
+      }
+
       const ensured = await db.auth.ensureAtCheckout({ email, name, phone });
       if ("needsLogin" in ensured) {
         toast.message("That email already has a client book. Sign in to continue.");
@@ -46,6 +96,7 @@ export default function Checkout() {
       }
       await refresh();
       await refreshCart();
+
       const order = await db.checkout.placeOrder({
         fulfillment,
         address: String(data.get("address") ?? ""),
@@ -92,14 +143,14 @@ export default function Checkout() {
             <button
               type="button"
               onClick={() => setFulfillment("pickup_ibadan")}
-              className={`rounded-2xl border p-4 text-left ${fulfillment === "pickup_ibadan" ? "border-ink" : "border-line"}`}
+              className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${fulfillment === "pickup_ibadan" ? "border-ink" : "border-line"}`}
             >
               Pickup · Ibadan HQ
             </button>
             <button
               type="button"
               onClick={() => setFulfillment("delivery")}
-              className={`rounded-2xl border p-4 text-left ${fulfillment === "delivery" ? "border-ink" : "border-line"}`}
+              className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${fulfillment === "delivery" ? "border-ink" : "border-line"}`}
             >
               Delivery · Nigeria
             </button>
@@ -116,19 +167,9 @@ export default function Checkout() {
         <div>
           <p className="mb-2 font-alt text-2xl text-ink">Pay {formatNaira(amount)}</p>
           <p className="mb-4 text-sm">
-            Checking out opens a client book if you do not have one — check the mailbox on this demo for a set-password step.
-            Change it later in Profile.
+            {hasMtm ? "Made-to-measure: deposit due now; balance before collection." : "Full amount due at checkout."}
           </p>
-          <p className="mb-4 text-sm">
-            Subtotal {formatNaira(totals.payable)}
-            {totals.discount > 0 ? ` · saved ${formatNaira(totals.discount)}` : ""} · shipping{" "}
-            {formatNaira(shipping ?? 0)}
-          </p>
-          <PayMethods
-            amountKobo={hasMtm ? Math.round((amount * (settings?.depositPercent ?? 60)) / 100) : amount}
-            busy={busy}
-            onPay={(choice) => pay(choice)}
-          />
+          <PayMethods amountKobo={amount} busy={busy} onPay={pay} />
         </div>
       </section>
     </StaffShopGuard>

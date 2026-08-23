@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import LoadingButton from "@/components/LoadingButton";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { landingPath } from "@/db/session";
@@ -9,7 +10,10 @@ export default function StudioLogin() {
   const { login } = useSession();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const chips = db.auth.demoAccounts().filter((item) => item.role !== "client");
+  const chips =
+    import.meta.env.DEV && !import.meta.env.VITE_API_URL
+      ? db.auth.demoAccounts().filter((item) => item.role !== "client")
+      : [];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,9 +60,9 @@ export default function StudioLogin() {
               <input name="password" type="password" required className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-ink" />
             </label>
             <p className="text-xs">Presentation accounts — not production.</p>
-            <button disabled={busy} className="os-pill w-full bg-ink text-white">
+            <LoadingButton type="submit" loading={busy} loadingText="Signing in…" className="w-full">
               Open House
-            </button>
+            </LoadingButton>
           </form>
           <div className="mt-6 flex flex-wrap gap-2">
             {chips.map((chip) => (

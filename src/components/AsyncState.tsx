@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PageSkeleton } from "@/components/Skeleton";
 import { ForbiddenError } from "@/db/database";
 
 export function AsyncGuard({
@@ -15,7 +16,7 @@ export function AsyncGuard({
   empty?: ReactNode;
 }) {
   if (loading) {
-    return <>{skeleton ?? <p className="py-10 text-center text-sm text-muted">Loading…</p>}</>;
+    return <>{skeleton ?? <PageSkeleton />}</>;
   }
   if (error) {
     const forbidden = error.includes("permission") || error.includes("cannot");

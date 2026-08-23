@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { replaceState } from "@/db/persist";
+import { mutate, replaceState } from "@/db/persist";
 import { createSeed } from "@/db/seed";
 import { writeSession } from "@/db/session";
 import { db, ForbiddenError, DEMO_PASSWORD } from "@/db/database";
+import { nairaToKobo } from "@/lib/money";
 
 beforeEach(() => {
   localStorage.clear();
@@ -51,6 +52,18 @@ describe("ensureAtCheckout A03", () => {
 
 describe("quotations.accept", () => {
   it("creates an order for the client", async () => {
+    mutate((draft) => {
+      draft.quotations.push({
+        id: "quote_ade_12",
+        number: "Q-2026-00012",
+        customerId: "user_ade",
+        description: "Custom wine Agbada",
+        totalKobo: nairaToKobo(450000),
+        depositKobo: nairaToKobo(250000),
+        status: "sent",
+        createdAt: new Date().toISOString(),
+      });
+    });
     await db.auth.login("ade@eunik.demo", DEMO_PASSWORD);
     const order = await db.quotations.accept("quote_ade_12");
     expect(order.number).toBeTruthy();
@@ -60,6 +73,38 @@ describe("quotations.accept", () => {
 
 describe("production.moveStage", () => {
   it("updates order status when ready", async () => {
+    mutate((draft) => {
+      draft.orders.push({
+        id: "order_1001",
+        number: "1001",
+        customerId: "user_ade",
+        customerName: "Adewale Banjo",
+        customerEmail: "ade@eunik.demo",
+        customerPhone: "0803",
+        kind: "made_to_measure",
+        status: "production",
+        name: "Cream Senator",
+        image: "/images/sen3002.jpg",
+        qty: 1,
+        subtotalKobo: nairaToKobo(110000),
+        shippingKobo: 0,
+        discountKobo: 0,
+        totalKobo: nairaToKobo(110000),
+        depositKobo: nairaToKobo(70000),
+        paidKobo: nairaToKobo(70000),
+        fulfillment: "pickup_ibadan",
+        createdAt: new Date().toISOString(),
+      });
+      draft.productionOrders.push({
+        id: "prod_1001",
+        orderId: "order_1001",
+        customerId: "user_ade",
+        garment: "Cream Senator Outfit",
+        stage: "sewing",
+        assigneeId: "user_tailor",
+        dueDate: "2026-08-22",
+      });
+    });
     await db.auth.login("olamide@eunik.demo", DEMO_PASSWORD);
     const job = await db.production.moveStage("prod_1001", "ready");
     expect(job.stage).toBe("ready");

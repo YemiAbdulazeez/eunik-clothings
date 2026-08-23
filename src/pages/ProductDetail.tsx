@@ -2,7 +2,11 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
+import LazyImage from "@/components/LazyImage";
+import LoadingButton from "@/components/LoadingButton";
 import PageHero from "@/components/PageHero";
+import ShareBar from "@/components/ShareBar";
+import { PageSkeleton } from "@/components/Skeleton";
 import { PageHeader } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -44,7 +48,7 @@ export default function ProductDetail() {
       </>
     );
 
-  if (loading) return shell("Look", <p className="px-6 py-20 text-center">Finding the garment…</p>);
+  if (loading) return shell("Look", <PageSkeleton />);
   if (!product) return shell("Look", <p className="px-6 py-20 text-center">That SKU is not on the rail.</p>);
 
   const look = product;
@@ -111,14 +115,22 @@ export default function ProductDetail() {
   const body = (
     <section className={`mx-auto grid max-w-6xl gap-12 ${embedded ? "" : "px-6 py-10"} lg:grid-cols-2`}>
       <div>
-        <div className="bg-paper">
-          <img src={images[photo] ?? look.image} alt={look.name} className="w-full object-cover" />
-        </div>
+        <LazyImage
+          src={images[photo] ?? look.image}
+          alt={look.name}
+          className="aspect-[3/4] w-full object-cover"
+          aspectClassName="aspect-[3/4] w-full bg-paper"
+        />
         {images.length > 1 ? (
           <div className="mt-3 flex gap-2 overflow-x-auto">
             {images.map((src, index) => (
-              <button key={src + index} type="button" onClick={() => setPhoto(index)}>
-                <img src={src} alt="" className={`h-16 w-16 rounded-lg object-cover ${photo === index ? "ring-2 ring-ink" : ""}`} />
+              <button key={src + index} type="button" onClick={() => setPhoto(index)} className="hover:opacity-80">
+                <LazyImage
+                  src={src}
+                  alt=""
+                  className={`h-16 w-16 rounded-lg object-cover ${photo === index ? "ring-2 ring-ink" : ""}`}
+                  wrapperClassName="h-16 w-16 rounded-lg"
+                />
               </button>
             ))}
           </div>
@@ -130,6 +142,9 @@ export default function ProductDetail() {
         </span>
         <h1 className="mt-4 font-alt text-4xl text-ink">{look.name}</h1>
         <p className="mt-3 text-2xl font-medium text-ink">{quote ? "Request for price" : formatNaira(look.priceKobo)}</p>
+        <div className="mt-4">
+          <ShareBar title={look.name} text={`${look.name} · ${look.sku}`} />
+        </div>
         <p className="mt-6 leading-8">{look.description}</p>
         {variants && variants.length > 0 ? (
           <div className="mt-8">
@@ -152,24 +167,24 @@ export default function ProductDetail() {
         ) : null}
         <div className="mt-10 flex flex-wrap gap-3">
           {canShopHere && look.sellsRtw && !quote && !out ? (
-            <button type="button" disabled={busy} onClick={() => void addToBag("rtw")} className="rounded-full bg-ink px-6 py-3 text-sm text-white">
+            <LoadingButton loading={busy} loadingText="Adding…" onClick={() => void addToBag("rtw")}>
               Add to bag
-            </button>
+            </LoadingButton>
           ) : null}
           {canShopHere && (quote || out || !look.sellsRtw) ? (
-            <button type="button" disabled={busy} onClick={() => void addToBag("preorder")} className="rounded-full bg-ink px-6 py-3 text-sm text-white">
+            <LoadingButton loading={busy} loadingText="Adding…" onClick={() => void addToBag("preorder")}>
               {quote ? "Request price / pre-order" : "Pre-order"}
-            </button>
+            </LoadingButton>
           ) : null}
           {canShopHere && look.sellsMtm ? (
-            <button type="button" onClick={makeToMeasure} className="rounded-full bg-gold px-6 py-3 text-sm text-ink">
+            <LoadingButton variant="gold" onClick={makeToMeasure}>
               Make this <span className="highlight">to measure</span>
-            </button>
+            </LoadingButton>
           ) : null}
           {showWhatsApp ? (
-            <button type="button" onClick={() => void openProductWhatsApp(look)} className="rounded-full border border-ink px-6 py-3 text-sm text-ink">
+            <LoadingButton variant="ghost" onClick={() => void openProductWhatsApp(look)}>
               Order on WhatsApp
-            </button>
+            </LoadingButton>
           ) : null}
         </div>
         {canShopHere ? (

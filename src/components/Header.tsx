@@ -1,6 +1,7 @@
-import { NavLink, useLocation } from "react-router-dom";
-import { Instagram, MapPin, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Instagram, LogOut, MapPin, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import LoadingButton from "@/components/LoadingButton";
 import { useCart } from "@/context/CartProvider";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
@@ -12,16 +13,15 @@ const leftLinks = [
   { to: "/", label: "Home" },
   { to: "/shop", label: "Shop" },
   { to: "/collection", label: "Collection" },
-  { to: "/lookbook", label: "Lookbook" },
-  { to: "/events", label: "Events" },
-  { to: "/journal", label: "Magazine" },
+  { to: "/book", label: "Book" },
+  { to: "/about", label: "About" },
 ];
 
 const rightLinks = [
-  { to: "/book", label: "Book" },
+  { to: "/lookbook", label: "Lookbook" },
   { to: "/bespoke", label: "Bespoke" },
   { to: "/track", label: "Track" },
-  { to: "/about", label: "About" },
+  { to: "/journal", label: "Magazine" },
   { to: "/contact", label: "Contact" },
 ];
 
@@ -58,13 +58,17 @@ function NavItem({
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { count } = useCart();
-  const { user } = useSession();
+  const { user, logout } = useSession();
   const { data: settings } = useAsync(() => db.settings.get(), []);
 
   useEffect(() => {
     setOpen(false);
+    setAccountOpen(false);
   }, [location.pathname, location.hash]);
 
   const accountTo = user ? landingPath(user) : "/account/login";
@@ -73,9 +77,21 @@ export default function Header() {
   const freeShip = settings ? formatNaira(settings.freeShippingKobo) : "₦100,000";
   const instagram = settings?.instagram;
 
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await logout();
+      navigate(staff ? "/studio/login" : "/account/login");
+    } finally {
+      setSigningOut(false);
+      setAccountOpen(false);
+      setOpen(false);
+    }
+  }
+
   return (
     <header className="relative z-40">
-      <div className="flex h-10 items-center justify-center bg-gold px-4 text-center text-[13px] font-medium uppercase tracking-wide text-ink">
+      <div className="flex h-10 items-center justify-center bg-gold px-4 text-center text-[10px] font-medium uppercase tracking-wide text-ink lg:text-[13px]">
         <span>Enjoy FREE standard delivery on orders over {freeShip}.</span>
         <NavLink
           to="/shop"
@@ -110,14 +126,54 @@ export default function Header() {
               ))}
             </div>
             <div className="ml-auto flex items-center gap-3 text-ink">
-              <NavLink to="/search" aria-label="Search" className="p-1">
+              <NavLink to="/search" aria-label="Search" className="p-1 transition-opacity hover:opacity-70">
                 <Search className="h-5 w-5" />
               </NavLink>
-              <NavLink to={accountTo} aria-label={accountLabel} className="p-1">
-                <UserRound className="h-5 w-5" />
-              </NavLink>
+              {user ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label={accountLabel}
+                    aria-expanded={accountOpen}
+                    aria-haspopup="menu"
+                    className="p-1 transition-opacity hover:opacity-70"
+                    onClick={() => setAccountOpen((v) => !v)}
+                  >
+                    <UserRound className="h-5 w-5" />
+                  </button>
+                  {accountOpen ? (
+                    <div
+                      role="menu"
+                      className="absolute right-0 mt-2 w-48 rounded-xl border border-line bg-white py-2 shadow-lg"
+                    >
+                      <NavLink
+                        role="menuitem"
+                        to={accountTo}
+                        className="block px-4 py-2 text-sm text-ink hover:bg-paper"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        {accountLabel}
+                      </NavLink>
+                      <button
+                        role="menuitem"
+                        type="button"
+                        disabled={signingOut}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink hover:bg-paper disabled:opacity-60"
+                        onClick={() => void signOut()}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        {signingOut ? "Signing out…" : "Sign out"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <NavLink to={accountTo} aria-label={accountLabel} className="p-1 transition-opacity hover:opacity-70">
+                  <UserRound className="h-5 w-5" />
+                </NavLink>
+              )}
               {staff ? null : (
-                <NavLink to="/cart" aria-label="Bag" className="relative p-1">
+                <NavLink to="/cart" aria-label="Bag" className="relative p-1 transition-opacity hover:opacity-70">
                   <ShoppingBag className="h-5 w-5" />
                   {count > 0 ? (
                     <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-ink">
@@ -127,7 +183,7 @@ export default function Header() {
                 </NavLink>
               )}
               {instagram ? (
-                <a href={instagram} target="_blank" rel="noreferrer" className="hidden items-center gap-1.5 text-[15px] 2xl:flex">
+                <a href={instagram} target="_blank" rel="noreferrer" className="hidden items-center gap-1.5 text-[15px] hover:opacity-70 2xl:flex">
                   <Instagram className="h-4 w-4" />
                   <span>Instagram</span>
                 </a>
@@ -136,6 +192,17 @@ export default function Header() {
           </div>
 
           <div className="flex items-center gap-3 lg:hidden">
+            {user ? (
+              <button
+                type="button"
+                aria-label="Sign out"
+                className="rounded-full border border-line p-2 text-ink transition-colors hover:border-ink hover:bg-paper"
+                disabled={signingOut}
+                onClick={() => void signOut()}
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            ) : null}
             {staff ? null : (
               <NavLink to="/cart" aria-label="Bag" className="relative">
                 <ShoppingBag className="h-6 w-6 text-ink" />
@@ -153,12 +220,23 @@ export default function Header() {
         </div>
 
         {open ? (
-          <div className="flex flex-col gap-1 border-t border-line bg-white px-6 py-6 font-alt lg:hidden">
+          <div className="flex flex-col gap-1 border-t border-line bg-white px-6 py-6 font-alt lg:hidden" role="dialog" aria-modal="true">
             {[...leftLinks, ...rightLinks, { to: accountTo, label: accountLabel }, { to: "/search", label: "Search" }].map(
               (link) => (
                 <NavItem key={link.label} {...link} onClick={() => setOpen(false)} />
               ),
             )}
+            {user ? (
+              <LoadingButton
+                variant="ghost"
+                loading={signingOut}
+                loadingText="Signing out…"
+                className="mt-4 w-full"
+                onClick={() => void signOut()}
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </LoadingButton>
+            ) : null}
           </div>
         ) : null}
       </nav>
