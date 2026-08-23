@@ -20,7 +20,10 @@ export default function StudioLogin() {
     const data = new FormData(event.currentTarget);
     setBusy(true);
     try {
-      const session = await login(String(data.get("email")), String(data.get("password")));
+      const session = await login(String(data.get("email")), String(data.get("password")), {
+        portal: "staff",
+        remember: data.get("remember") === "on",
+      });
       const me = await db.auth.me();
       navigate(me ? landingPath(me) : landingPath(session.role));
     } catch (error) {
@@ -59,7 +62,11 @@ export default function StudioLogin() {
               <span className="os-label">Password</span>
               <input name="password" type="password" required className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-ink" />
             </label>
-            <div className="flex justify-end text-xs">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-ink">
+                <input type="checkbox" name="remember" className="accent-ink" />
+                Remember me
+              </label>
               <Link to="/account/forgot-password?from=studio" className="hover:underline">
                 Forgot password?
               </Link>

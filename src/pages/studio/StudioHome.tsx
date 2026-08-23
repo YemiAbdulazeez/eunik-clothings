@@ -52,9 +52,9 @@ export default function StudioHome() {
   const canProduction = user ? canSeeSection(user, "production") : false;
   const newRequests = (requests ?? []).filter((item) => item.status === "new");
   const mix = [
-    { name: "RTW", value: overview?.mix.rtw ?? 0 },
-    { name: "MTM", value: overview?.mix.mtm ?? 0 },
-    { name: "Custom", value: overview?.mix.bespoke ?? 0 },
+    { name: "RTW", value: overview?.mix?.rtw ?? 0 },
+    { name: "MTM", value: overview?.mix?.mtm ?? 0 },
+    { name: "Custom", value: overview?.mix?.bespoke ?? 0 },
   ];
   const pipeline = Object.entries(overview?.pipeline ?? {}).map(([stage, count]) => ({
     stage: statusLabel(stage),

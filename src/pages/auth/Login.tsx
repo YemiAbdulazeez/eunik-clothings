@@ -26,7 +26,10 @@ export default function Login() {
     const data = new FormData(event.currentTarget);
     setBusy(true);
     try {
-      const session = await login(String(data.get("email")), String(data.get("password")));
+      const session = await login(String(data.get("email")), String(data.get("password")), {
+        portal: "client",
+        remember: data.get("remember") === "on",
+      });
       const me = await db.auth.me();
       navigate(me ? postLoginPath(me, params.get("next")) : landingPath(session.role));
     } catch (error) {
@@ -67,7 +70,11 @@ export default function Login() {
               <span className="os-label">Password</span>
               <input name="password" type="password" required minLength={8} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-ink" />
             </label>
-            <div className="flex justify-end text-xs">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-ink">
+                <input type="checkbox" name="remember" className="accent-ink" />
+                Remember me
+              </label>
               <Link to="/account/forgot-password" className="hover:underline">
                 Forgot password?
               </Link>

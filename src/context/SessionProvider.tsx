@@ -7,7 +7,11 @@ type SessionContextValue = {
   user: PublicUser | null;
   session: Session | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<Session>;
+  login: (
+    email: string,
+    password: string,
+    opts?: { portal?: "client" | "staff"; remember?: boolean },
+  ) => Promise<Session>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -37,8 +41,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       user,
       session,
       loading,
-      login: async (email, password) => {
-        const next = await db.auth.login(email, password);
+      login: async (email, password, opts) => {
+        const next = await db.auth.login(email, password, opts);
         await refresh();
         return next;
       },

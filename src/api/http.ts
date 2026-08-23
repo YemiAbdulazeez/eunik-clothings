@@ -63,10 +63,19 @@ interface AuthResponse {
 }
 
 export const httpAuth = {
-  async login(email: string, password: string): Promise<HttpUser> {
+  async login(
+    email: string,
+    password: string,
+    opts: { portal?: "client" | "staff"; remember?: boolean } = {},
+  ): Promise<HttpUser> {
     const data = await api<AuthResponse>("/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: {
+        email,
+        password,
+        portal: opts.portal,
+        remember: Boolean(opts.remember),
+      },
     });
     return data.user;
   },
@@ -162,8 +171,16 @@ export const httpSettings = {
 
 export const httpCart = {
   async get() {
-    const data = await api<{ cart: unknown }>("/cart");
-    return data.cart;
+    try {
+      const data = await api<{ cart: unknown }>("/cart");
+      return data.cart;
+    } catch (err) {
+      // Staff session on a shared device must not break the public shell
+      if (err instanceof ApiError && err.status === 403) {
+        return { id: "staff-bag", lines: [] };
+      }
+      throw err;
+    }
   },
   async addLine(line: {
     productId: string;
@@ -325,6 +342,21 @@ export const httpPeople = {
     const data = await api<{ staff: unknown[] }>("/studio/people");
     return data.staff;
   },
+  async listCustomers() {
+    const data = await api<{ customers: unknown[] }>("/studio/customers");
+    return data.customers;
+  },
+  async getCustomer(id: string) {
+    const data = await api<{ customer: unknown }>(`/studio/customers/${id}`);
+    return data.customer;
+  },
+  async updateCustomer(id: string, patch: Record<string, unknown>) {
+    const data = await api<{ customer: unknown }>(`/studio/customers/${id}`, {
+      method: "PATCH",
+      body: patch,
+    });
+    return data.customer;
+  },
   async hire(payload: { email: string; name: string; firstName: string; phone: string; role: string; department?: string; jobTitle?: string }) {
     return api<{ id: string }>("/studio/people/hire", { method: "POST", body: payload });
   },
@@ -426,7 +458,22 @@ import type { StudioOverview } from "@/db/types";
 
 export const httpOverview = {
   async get() {
-    return api<StudioOverview>("/studio/overview");
+    const data = await api<Partial<StudioOverview> & Record<string, unknown>>("/studio/overview");
+    return {
+      revenueKobo: Number(data.revenueKobo ?? 0),
+      awaitingReceipts: Number(data.awaitingReceipts ?? 0),
+      openOrders: Number(data.openOrders ?? 0),
+      outstandingKobo: Number(data.outstandingKobo ?? 0),
+      activeBespoke: Number(data.activeBespoke ?? 0),
+      lowFabrics: Number(data.lowFabrics ?? 0),
+      unclaimedLeads: Number(data.unclaimedLeads ?? 0),
+      mix: {
+        rtw: Number(data.mix?.rtw ?? 0),
+        mtm: Number(data.mix?.mtm ?? 0),
+        bespoke: Number(data.mix?.bespoke ?? 0),
+      },
+      pipeline: (data.pipeline && typeof data.pipeline === "object" ? data.pipeline : {}) as Record<string, number>,
+    } satisfies StudioOverview;
   },
 };
 

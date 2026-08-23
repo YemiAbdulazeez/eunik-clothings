@@ -45,7 +45,7 @@ export default function StudioOrderDetail() {
         <StatCard label="Status" value={statusLabel(order.status)} />
       </div>
       <SectionCard title="Progress">
-        <OrderStepper status={order.status} stage={prod?.stage} kind={order.kind} />
+        <OrderStepper status={order.status} stage={prod?.stage} kind={order.kind} createdAt={order.createdAt} />
       </SectionCard>
       <SectionCard title="Update status">
         <div className="flex flex-wrap gap-2">

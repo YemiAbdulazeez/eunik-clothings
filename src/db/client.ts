@@ -505,9 +505,13 @@ function trafficForRange(range: "today" | "7d" | "30d" | "all"): TrafficSnapshot
 
 export const db = {
   auth: {
-    async login(email: string, password: string): Promise<Session> {
+    async login(
+      email: string,
+      password: string,
+      opts: { portal?: "client" | "staff"; remember?: boolean } = {},
+    ): Promise<Session> {
       if (HTTP_ENABLED) {
-        const httpUser = await httpAuth.login(email, password);
+        const httpUser = await httpAuth.login(email, password, opts);
         const session: Session = { userId: httpUser.id, role: httpUser.role as Role };
         writeSession(session);
         return session;
@@ -518,6 +522,13 @@ export const db = {
       );
       if (!user || user.password !== password) {
         throw new Error("Those house credentials were not recognised.");
+      }
+      const isStaff = user.role !== "client";
+      if (opts.portal === "client" && isStaff) {
+        throw new ForbiddenError("This is a house staff account. Use House sign in instead of My account.");
+      }
+      if (opts.portal === "staff" && !isStaff) {
+        throw new ForbiddenError("This is a client book. Use My account sign in instead of House.");
       }
       const session: Session = { userId: user.id, role: user.role };
       writeSession(session);
@@ -1369,18 +1380,18 @@ export const db = {
     },
     async trackPublic(number: string) {
       if (HTTP_ENABLED) {
-        const order = (await httpOrders.track(number)) as Order | null;
+        const order = (await httpOrders.track(number)) as Record<string, unknown> | null;
         if (!order) return null;
         return {
-          number: order.number,
-          name: order.name,
-          image: order.image,
-          kind: order.kind,
-          status: order.status,
-          createdAt: order.createdAt,
-          fulfillment: order.fulfillment,
-          stage: null,
-          customerName: order.customerName,
+          number: String(order.number ?? ""),
+          name: String(order.name ?? "EUNIK order"),
+          image: (order.image as string | undefined) ?? undefined,
+          kind: String(order.kind ?? "ready_to_wear"),
+          status: String(order.status ?? "pending_payment"),
+          createdAt: String(order.createdAt ?? order.created_at ?? ""),
+          fulfillment: String(order.fulfillment ?? "pickup_ibadan"),
+          stage: (order.stage as string | null) ?? null,
+          customerName: String(order.customerName ?? order.customer_name ?? ""),
         };
       }
       await delay();
@@ -2303,6 +2314,7 @@ export const db = {
   },
   people: {
     async customers() {
+      if (HTTP_ENABLED) return (await httpPeople.listCustomers()) as PublicUser[];
       await delay();
       assertRoles(["super_admin", "manager", "desk", "finance"], "see clients", "customers");
       return getState().users.filter((item) => item.role === "client").map(publicUser);
@@ -2314,6 +2326,14 @@ export const db = {
       return getState().users.filter((item) => item.role !== "client").map(publicUser);
     },
     async get(id: string) {
+      if (HTTP_ENABLED) {
+        try {
+          return (await httpPeople.getCustomer(id)) as PublicUser;
+        } catch {
+          const staff = (await httpPeople.listStaff()) as PublicUser[];
+          return staff.find((item) => item.id === id) ?? null;
+        }
+      }
       await delay();
       const user = getState().users.find((item) => item.id === id);
       return user ? publicUser(user) : null;
@@ -2342,6 +2362,13 @@ export const db = {
         >
       >,
     ) {
+      if (HTTP_ENABLED) {
+        if (patch.role || patch.navSections) {
+          if (patch.navSections) await httpPeople.setNav(id, patch.navSections as string[]);
+          return (await httpPeople.getCustomer(id).catch(() => null)) as PublicUser;
+        }
+        return (await httpPeople.updateCustomer(id, patch)) as PublicUser;
+      }
       await delay();
       const actor = requireUser();
       if (patch.role || patch.navSections) {

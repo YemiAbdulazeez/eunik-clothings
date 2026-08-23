@@ -62,7 +62,7 @@ export default function AccountOrders() {
                     <p className="text-ink">
                       {formatNaira(order.paidKobo)} paid of {formatNaira(order.totalKobo)}
                     </p>
-                    <OrderStepper status={order.status} stage={stage} kind={order.kind} />
+                    <OrderStepper status={order.status} stage={stage} kind={order.kind} compact createdAt={order.createdAt} />
                     <div className="flex flex-wrap gap-2">
                       {order.paidKobo < order.totalKobo ? (
                         <Link to="/account/payments" className="os-pill bg-gold text-ink">
