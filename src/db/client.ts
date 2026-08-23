@@ -159,10 +159,15 @@ function ensureCart(id: string): Cart {
 }
 
 function lineTotal(line: CartLine): number {
-  const product = getState().products.find((item) => item.id === line.productId);
   const fabric = getState().fabrics.find((item) => item.id === line.fabricId);
+  const surcharge = fabric?.surchargeKobo ?? 0;
+  // Live API cart lines include unit price — do not depend on local seed catalogue
+  if (typeof line.priceKobo === "number" && Number.isFinite(line.priceKobo)) {
+    return (line.priceKobo + surcharge) * line.qty;
+  }
+  const product = getState().products.find((item) => item.id === line.productId);
   if (!product) return 0;
-  return (product.priceKobo + (fabric?.surchargeKobo ?? 0)) * line.qty;
+  return (product.priceKobo + surcharge) * line.qty;
 }
 
 function cartTotals(cart: Cart) {
@@ -212,6 +217,17 @@ export type PlaceOrderPayload = {
     | { method: "paystack" }
     | { method: "bank_transfer"; transactionNumber: string; receiptDataUrl: string };
 };
+
+/** Unique ORD-###### for local/demo checkout (guests and clients). */
+function allocateOrderNumber(draft: { meta: { nextOrder: number }; orders: { number: string }[] }): string {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const n = draft.meta.nextOrder;
+    draft.meta.nextOrder += 1;
+    const number = `ORD-${String(n).padStart(6, "0")}`;
+    if (!draft.orders.some((order) => order.number === number)) return number;
+  }
+  throw new Error("Could not allocate a unique order number.");
+}
 
 function demoChips(): DemoChip[] {
   return [
@@ -282,9 +298,8 @@ async function createOrderFromCart(payload: PlaceOrderPayload): Promise<Order> {
         throw new Error("One of the sizes in your bag is no longer available.");
       }
     }
-    const number = String(draft.meta.nextOrder);
-    draft.meta.nextOrder += 1;
-    const id = `order_${number}`;
+    const number = allocateOrderNumber(draft);
+    const id = `order_${number.replace(/\W/g, "_")}`;
     const profile = first.measurementProfileId
       ? draft.measurementProfiles.find((item) => item.id === first.measurementProfileId)
       : undefined;
@@ -1090,7 +1105,7 @@ export const db = {
         const cart = (await httpCart.get()) as Cart | null;
         const lines = (cart?.lines ?? []).map((line) => ({
           productId: line.productId,
-          variantId: line.variantId,
+          ...(line.variantId ? { variantId: line.variantId } : {}),
           kind: line.kind,
           qty: line.qty,
         }));
@@ -1595,11 +1610,10 @@ export const db = {
       mutate((draft) => {
         const row = draft.quotations.find((item) => item.id === id)!;
         row.status = "accepted";
-        const number = String(draft.meta.nextOrder);
-        draft.meta.nextOrder += 1;
+        const number = allocateOrderNumber(draft);
         const person = draft.users.find((entry) => entry.id === row.customerId);
         order = {
-          id: `order_${number}`,
+          id: `order_${number.replace(/\W/g, "_")}`,
           number,
           customerId: row.customerId,
           customerName: person?.name ?? "Client",
@@ -1948,9 +1962,8 @@ export const db = {
         row.status = "claimed";
         if (options?.openTicket) {
           const product = draft.products.find((item) => item.id === row.productId);
-          const number = String(draft.meta.nextOrder);
-          draft.meta.nextOrder += 1;
-          const orderId = `order_${number}`;
+          const number = allocateOrderNumber(draft);
+          const orderId = `order_${number.replace(/\W/g, "_")}`;
           draft.orders.unshift({
             id: orderId,
             number,

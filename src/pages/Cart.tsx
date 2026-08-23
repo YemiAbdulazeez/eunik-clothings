@@ -37,14 +37,22 @@ export default function CartPage() {
             <ul className="space-y-6">
               {cart.lines.map((line) => {
                 const product = products?.find((item) => item.id === line.productId);
-                if (!product) return null;
+                const name = line.name ?? product?.name ?? "Look";
+                const image = line.image ?? product?.image ?? "/images/eunik.png";
+                const sku = line.sku ?? product?.sku ?? "";
+                const unit = typeof line.priceKobo === "number" ? line.priceKobo : (product?.priceKobo ?? 0);
                 return (
                   <li key={line.id} className="flex gap-4 border-b border-line pb-6">
-                    <img src={product.image} alt="" className="h-28 w-24 object-cover" />
+                    <img src={image} alt="" className="h-28 w-24 object-cover" />
                     <div className="flex-1">
-                      <p className="font-alt text-xl text-ink">{product.name}</p>
-                      <p className="text-sm uppercase">{product.sku} · {line.kind === "mtm" ? "Made to measure" : "Ready to wear"}</p>
-                      <p className="mt-1 text-ink">{formatNaira(product.priceKobo)}</p>
+                      <p className="font-alt text-xl text-ink">{name}</p>
+                      <p className="text-sm uppercase">
+                        {sku}
+                        {sku ? " · " : ""}
+                        {line.kind === "mtm" ? "Made to measure" : "Ready to wear"}
+                        {line.size ? ` · ${line.size}` : ""}
+                      </p>
+                      <p className="mt-1 text-ink">{formatNaira(unit)}</p>
                       <div className="mt-3 flex items-center gap-3">
                         <input
                           type="number"

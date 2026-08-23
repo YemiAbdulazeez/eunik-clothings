@@ -14,10 +14,12 @@ export default function PayMethods({
   amountKobo,
   onPay,
   busy,
+  disabled = false,
 }: {
   amountKobo: number;
   onPay: (choice: PayChoice) => Promise<void>;
   busy: boolean;
+  disabled?: boolean;
 }) {
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const [method, setMethod] = useState<"paystack" | "bank_transfer">("paystack");
@@ -107,6 +109,7 @@ export default function PayMethods({
       <LoadingButton
         type="submit"
         loading={busy}
+        disabled={disabled}
         loadingText={method === "paystack" ? "Opening Paystack…" : "Sending…"}
         className="w-full"
       >

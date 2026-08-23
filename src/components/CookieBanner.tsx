@@ -17,11 +17,11 @@ export default function CookieBanner() {
         We use cookies to remember preferences and measure site traffic after you consent. See our cookie policy for details.
       </p>
       <Link
-        to="/policies/order"
+        to="/policies/privacy"
         className="mb-3 block w-full rounded-full border border-white/20 py-2 text-center text-sm"
         onClick={() => setVisible(false)}
       >
-        Cookie policy
+        Privacy &amp; cookies
       </Link>
       <button
         type="button"

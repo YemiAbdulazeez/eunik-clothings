@@ -97,6 +97,21 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/policies/terms" className="hover:text-white">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link to="/policies/privacy" className="hover:text-white">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/policies/ndpr" className="hover:text-white">
+                  NDPR Notice
+                </Link>
+              </li>
+              <li>
                 <Link to="/policies/order" className="hover:text-white">
                   Order Policy
                 </Link>

@@ -162,6 +162,12 @@ export type CartLine = {
   fabricId?: string;
   measurementProfileId?: string;
   qty: number;
+  /** Present when cart comes from the live API */
+  priceKobo?: number;
+  name?: string;
+  image?: string;
+  sku?: string;
+  size?: string;
 };
 
 export type Cart = {

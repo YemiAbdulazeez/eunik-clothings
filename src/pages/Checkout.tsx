@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageHero from "@/components/PageHero";
 import StaffShopGuard from "@/components/StaffShopGuard";
@@ -19,18 +19,26 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const [fulfillment, setFulfillment] = useState<"pickup_ibadan" | "delivery">("pickup_ibadan");
+  const [agreedPolicies, setAgreedPolicies] = useState(false);
   const [busy, setBusy] = useState(false);
   const totals = cart ? db.cart.totals(cart) : { subtotal: 0, discount: 0, payable: 0 };
   const { data: shipping } = useAsync(
     () => db.checkout.quoteShipping(fulfillment, totals.payable),
     [fulfillment, totals.payable],
   );
-  const amount = totals.payable + (shipping ?? 0);
-  const hasMtm = cart?.lines.some((line) => line.kind === "mtm");
+  const hasMtm = cart?.lines.some((line) => line.kind === "mtm") ?? false;
+  const depositPercent = settings?.depositPercent ?? 50;
+  const merchandise = totals.payable + (shipping ?? 0);
+  // MTM: show deposit due now (matches what Paystack/transfer will charge after place-order)
+  const amount = hasMtm ? Math.ceil((merchandise * depositPercent) / 100) : merchandise;
 
   async function pay(choice: PayChoice) {
     if (!cart?.lines.length) {
       toast.error("Your bag is empty.");
+      return;
+    }
+    if (!agreedPolicies) {
+      toast.error("Please confirm you agree to our policies and terms before paying.");
       return;
     }
     const form = document.getElementById("checkout-form") as HTMLFormElement | null;
@@ -46,7 +54,7 @@ export default function Checkout() {
         const placed = await httpOrders.place({
           lines: cart.lines.map((line) => ({
             productId: line.productId,
-            variantId: line.variantId,
+            ...(line.variantId ? { variantId: line.variantId } : {}),
             kind: line.kind,
             qty: line.qty,
           })),
@@ -172,13 +180,66 @@ export default function Checkout() {
           ) : (
             <p className="text-sm">{settings?.pickupLocation}</p>
           )}
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/50 p-4 text-sm leading-6 text-ink">
+            <input
+              type="checkbox"
+              required
+              checked={agreedPolicies}
+              onChange={(event) => setAgreedPolicies(event.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-ink"
+            />
+            <span>
+              By continuing to order and pay, I agree to EUNIK’s{" "}
+              <Link to="/policies/terms" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+                Terms &amp; Conditions
+              </Link>
+              ,{" "}
+              <Link to="/policies/order" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+                Order Policy
+              </Link>
+              ,{" "}
+              <Link to="/policies/jobs" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+                Job Taking Policy
+              </Link>
+              ,{" "}
+              <Link to="/policies/privacy" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+                Privacy Policy
+              </Link>
+              , and{" "}
+              <Link to="/policies/ndpr" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+                NDPR Notice
+              </Link>
+              .
+            </span>
+          </label>
         </form>
         <div>
           <p className="mb-2 font-alt text-2xl text-ink">Pay {formatNaira(amount)}</p>
           <p className="mb-4 text-sm">
-            {hasMtm ? "Made-to-measure: deposit due now; balance before collection." : "Full amount due at checkout."}
+            {hasMtm
+              ? `Made-to-measure: ${depositPercent}% deposit due now (${formatNaira(amount)}); balance before collection.`
+              : "Full amount due at checkout."}
           </p>
-          <PayMethods amountKobo={amount} busy={busy} onPay={pay} />
+          {cart?.lines.length ? (
+            <ul className="mb-6 space-y-2 border border-line p-4 text-sm">
+              {cart.lines.map((line) => (
+                <li key={line.id} className="flex justify-between gap-3">
+                  <span>
+                    {line.name ?? "Look"} × {line.qty}
+                  </span>
+                  <span>{formatNaira((line.priceKobo ?? 0) * line.qty)}</span>
+                </li>
+              ))}
+              <li className="flex justify-between border-t border-line pt-2 font-medium text-ink">
+                <span>Subtotal</span>
+                <span>{formatNaira(totals.subtotal)}</span>
+              </li>
+            </ul>
+          ) : null}
+          <PayMethods amountKobo={amount} busy={busy} disabled={!agreedPolicies} onPay={pay} />
+          {!agreedPolicies ? (
+            <p className="mt-3 text-sm text-muted">Tick the policy agreement above to enable payment.</p>
+          ) : null}
         </div>
       </section>
     </StaffShopGuard>

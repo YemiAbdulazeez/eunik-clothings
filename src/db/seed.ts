@@ -250,7 +250,7 @@ export function createSeed(): DbState {
       email: "info@eunikclothings.com",
       whatsapp: "2348167073585",
       instagram:
-        "https://www.instagram.com/eunikclothing?igsh=YWh2bWp0c2p4dGI3&utm_source=qr",
+        "https://www.instagram.com/eunikclothings",
       siteUrl: "https://eunikclothings.com",
       address: "Ibadan, Oyo State, Nigeria",
       currency: "NGN",
@@ -260,9 +260,9 @@ export function createSeed(): DbState {
       pickupLocation: "Eunik HQ, Ibadan",
       aboutJoinLine: "Clients across Oyo, Lagos, Abuja & Ekiti",
       bank: {
-        bankName: "First Bank",
-        accountName: "EUNIK Clothings",
-        accountNumber: "0123456789",
+        bankName: "Moniepoint",
+        accountName: "EUNIK Impeccable Outfits",
+        accountNumber: "5845526248",
         narrationHint: "Order #",
       },
     },
