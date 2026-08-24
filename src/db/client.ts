@@ -827,6 +827,7 @@ export const db = {
         .sort((a, b) => a.featuredRank - b.featuredRank);
     },
     async listAll() {
+      if (HTTP_ENABLED) return (await httpProducts.listAll()) as Product[];
       await delay();
       assertRoles(["super_admin", "manager", "content"], "list the catalogue file", "products");
       return getState().products;
@@ -848,6 +849,7 @@ export const db = {
       featuredRank: number;
       status: "live" | "draft";
     }) {
+      if (HTTP_ENABLED) return (await httpProducts.create(input)) as Product;
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "add a look", "products");
       const sku = input.sku.trim().toUpperCase();
@@ -891,6 +893,7 @@ export const db = {
         >
       >,
     ) {
+      if (HTTP_ENABLED) return (await httpProducts.update(id, patch)) as Product;
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "edit products", "products");
       let updated = getState().products.find((item) => item.id === id);
@@ -913,6 +916,10 @@ export const db = {
       return updated!;
     },
     async remove(id: string) {
+      if (HTTP_ENABLED) {
+        await httpProducts.remove(id);
+        return;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager"], "delete a look", "products");
       mutate((draft) => {

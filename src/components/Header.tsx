@@ -168,9 +168,17 @@ export default function Header() {
                   ) : null}
                 </div>
               ) : (
-                <NavLink to={accountTo} aria-label={accountLabel} className="p-1 transition-opacity hover:opacity-70">
-                  <UserRound className="h-5 w-5" />
-                </NavLink>
+                <div className="flex items-center gap-3 text-[15px]">
+                  <NavLink to="/account/login" className="text-ink/80 transition-colors hover:text-ink">
+                    Login
+                  </NavLink>
+                  <NavLink
+                    to="/account/register"
+                    className="rounded-full border border-ink px-3 py-1 text-ink transition-colors hover:bg-ink hover:text-white"
+                  >
+                    Register
+                  </NavLink>
+                </div>
               )}
               {staff ? null : (
                 <NavLink to="/cart" aria-label="Bag" className="relative p-1 transition-opacity hover:opacity-70">
@@ -221,22 +229,40 @@ export default function Header() {
 
         {open ? (
           <div className="flex flex-col gap-1 border-t border-line bg-white px-6 py-6 font-alt lg:hidden" role="dialog" aria-modal="true">
-            {[...leftLinks, ...rightLinks, { to: accountTo, label: accountLabel }, { to: "/search", label: "Search" }].map(
-              (link) => (
-                <NavItem key={link.label} {...link} onClick={() => setOpen(false)} />
-              ),
-            )}
+            {[...leftLinks, ...rightLinks, { to: "/search", label: "Search" }].map((link) => (
+              <NavItem key={link.label} {...link} onClick={() => setOpen(false)} />
+            ))}
             {user ? (
-              <LoadingButton
-                variant="ghost"
-                loading={signingOut}
-                loadingText="Signing out…"
-                className="mt-4 w-full"
-                onClick={() => void signOut()}
-              >
-                <LogOut className="h-4 w-4" /> Sign out
-              </LoadingButton>
-            ) : null}
+              <>
+                <NavItem to={accountTo} label={accountLabel} onClick={() => setOpen(false)} />
+                <LoadingButton
+                  variant="ghost"
+                  loading={signingOut}
+                  loadingText="Signing out…"
+                  className="mt-4 w-full"
+                  onClick={() => void signOut()}
+                >
+                  <LogOut className="h-4 w-4" /> Sign out
+                </LoadingButton>
+              </>
+            ) : (
+              <div className="mt-4 flex flex-col gap-2">
+                <NavLink
+                  to="/account/login"
+                  className="rounded-full border border-line px-4 py-3 text-center text-ink"
+                  onClick={() => setOpen(false)}
+                >
+                  Login
+                </NavLink>
+                <NavLink
+                  to="/account/register"
+                  className="rounded-full bg-ink px-4 py-3 text-center text-white"
+                  onClick={() => setOpen(false)}
+                >
+                  Register
+                </NavLink>
+              </div>
+            )}
           </div>
         ) : null}
       </nav>

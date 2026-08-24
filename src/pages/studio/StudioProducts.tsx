@@ -13,12 +13,25 @@ import { canDeleteProducts } from "@/lib/rbac";
 
 export default function StudioProducts() {
   const { id } = useParams();
-  const { data: products } = useAsync(() => db.products.listAll().catch(() => db.products.list()), []);
+  const { data: products, loading } = useAsync(() => db.products.listAll().catch(() => db.products.list()), []);
   const { data: categories } = useAsync(() => db.categories.list(), []);
   const editing = id && id !== "new" ? (products ?? []).find((item) => item.id === id) : null;
   const isForm = Boolean(id);
 
   if (isForm) {
+    if (id !== "new" && loading) {
+      return <p className="py-10 text-center text-sm text-muted">Opening look…</p>;
+    }
+    if (id !== "new" && !editing) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">That look was not found on the rail.</p>
+          <Link to="/studio/products" className="os-pill border border-line">
+            Back to products
+          </Link>
+        </div>
+      );
+    }
     return <ProductForm key={id} existing={editing ?? null} isNew={id === "new"} categories={categories ?? []} />;
   }
 

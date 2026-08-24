@@ -151,6 +151,25 @@ export const httpProducts = {
     const data = await api<{ product: unknown }>(`/products/${sku}`);
     return data.product;
   },
+  async listAll() {
+    const data = await api<{ products: unknown[] }>("/studio/products");
+    return data.products;
+  },
+  async getById(id: string) {
+    const data = await api<{ product: unknown }>(`/studio/products/${id}`);
+    return data.product;
+  },
+  async create(payload: Record<string, unknown>) {
+    const data = await api<{ product: unknown }>("/studio/products", { method: "POST", body: payload });
+    return data.product;
+  },
+  async update(id: string, patch: Record<string, unknown>) {
+    const data = await api<{ product: unknown }>(`/studio/products/${id}`, { method: "PATCH", body: patch });
+    return data.product;
+  },
+  async remove(id: string) {
+    await api(`/studio/products/${id}`, { method: "DELETE" });
+  },
 };
 
 export const httpCategories = {

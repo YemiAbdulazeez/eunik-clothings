@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag } from "lucide-react";
+import { Loader2, ShoppingBag } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { db, type Product } from "@/db/database";
 import { formatNaira } from "@/lib/money";
@@ -13,11 +14,13 @@ export default function ProductCard({ product }: { product: Product }) {
   const location = useLocation();
   const { user } = useSession();
   const { refresh } = useCart();
+  const [busy, setBusy] = useState(false);
   const href = shopHref(location.pathname, product.sku);
   const shopper = canShop(user);
   const showWhatsApp = !isHouseStaff(user);
 
   async function add() {
+    if (busy) return;
     try {
       if (product.priceOnRequest) {
         toast.message("Request for price — open the look or WhatsApp the house.");
@@ -29,23 +32,26 @@ export default function ProductCard({ product }: { product: Product }) {
         });
         return;
       }
+      setBusy(true);
       await db.cart.add({ productId: product.id, kind: "rtw", qty: 1 });
       await refresh();
       toast.success("Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");
+    } finally {
+      setBusy(false);
     }
   }
 
   const addButton = shopper ? (
     <button
       type="button"
+      disabled={busy}
       onClick={() => void add()}
-      className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-2 text-[13px] text-white hover:bg-gold"
-      
+      className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-2 text-[13px] text-white hover:bg-gold disabled:cursor-not-allowed disabled:opacity-70"
     >
-      <ShoppingBag className="h-4 w-4 mr-2" />
-      {product.priceOnRequest ? "Request price" : "Add to bag"}
+      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingBag className="mr-2 h-4 w-4" />}
+      {busy ? "Adding…" : product.priceOnRequest ? "Request price" : "Add to bag"}
     </button>
   ) : null;
 
@@ -53,7 +59,7 @@ export default function ProductCard({ product }: { product: Product }) {
     <button
       type="button"
       onClick={() => void openProductWhatsApp(product)}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-black px-3 py-2 text-[13px] hover:text-white hover:bg-green-600 border-2 hover:border-green-600"
+      className="inline-flex items-center justify-center gap-2 rounded-full border-2 bg-white px-3 py-2 text-[13px] text-black hover:border-green-600 hover:bg-green-600 hover:text-white"
     >
       WhatsApp
     </button>
