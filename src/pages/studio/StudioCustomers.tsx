@@ -5,11 +5,15 @@ import type { PublicUser } from "@/db/types";
 import { useAsync } from "@/hooks/useAsync";
 
 export default function StudioCustomers() {
-  const { data: customers, loading } = useAsync(() => db.people.customers(), []);
+  const { data: customers, loading, reload } = useAsync(() => db.people.customers(), []);
   if (loading && !customers) return <PageLoading />;
   return (
     <div className="space-y-6">
-      <PageHeader title="Customers" subtitle="Guest checkouts and registered clients — open a book for notes, orders, and balances." />
+      <PageHeader
+        title="Customers"
+        subtitle="Guest checkouts and registered clients — open a book for notes, orders, and balances."
+        onRefresh={() => reload()}
+      />
       <StatCard label="Client books" value={String(customers?.length ?? 0)} />
       {!customers?.length ? (
         <EmptyState title="No clients" text="Guest checkout opens a client book automatically." />

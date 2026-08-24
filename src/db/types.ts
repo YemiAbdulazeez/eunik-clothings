@@ -110,6 +110,8 @@ export type Category = {
   image: string;
   heroImage?: string;
   homeTileImage?: string;
+  /** Higher = more recently added (used for frontpage “latest”). */
+  sortOrder?: number;
 };
 
 export type Product = {

@@ -45,7 +45,11 @@ export default function StudioEvents() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Event editor" subtitle="Trunk shows and house dates. Images upload from device." />
+      <PageHeader
+        title="Event editor"
+        subtitle="Trunk shows and house dates. Images upload from device."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="On the calendar">
           <ul className="space-y-3">

@@ -7,8 +7,8 @@ import { useAsync } from "@/hooks/useAsync";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountReviews() {
-  const { data: orders, loading: ordersLoading } = useAsync(() => db.orders.listMine(), []);
-  const { data: reviews, loading: reviewsLoading } = useAsync(() => db.reviews.listMine(), []);
+  const { data: orders, loading: ordersLoading, reload: reloadOrders } = useAsync(() => db.orders.listMine(), []);
+  const { data: reviews, loading: reviewsLoading, reload: reloadReviews } = useAsync(() => db.reviews.listMine(), []);
   const [busy, setBusy] = useState(false);
   const reviewable = (orders ?? []).filter(
     (item) => item.productId && (item.status === "delivered" || item.status === "ready"),
@@ -37,7 +37,11 @@ export default function AccountReviews() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reviews" subtitle="Tell the house how the cloth sat after delivery." />
+      <PageHeader
+        title="Reviews"
+        subtitle="Tell the house how the cloth sat after delivery."
+        onRefresh={() => Promise.all([reloadOrders(), reloadReviews()])}
+      />
       <SectionCard title="Write a review">
         {reviewable.length ? (
           <form onSubmit={(event) => void submit(event)} className="grid gap-3 md:grid-cols-2">

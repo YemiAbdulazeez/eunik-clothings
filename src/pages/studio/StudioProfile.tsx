@@ -3,7 +3,7 @@ import ProfileForm from "@/components/os/ProfileForm";
 import { useSession } from "@/context/SessionProvider";
 
 export default function StudioProfile() {
-  const { user, loading } = useSession();
+  const { user, loading, refresh } = useSession();
 
   if (loading) return <PageLoading label="Opening your profile…" />;
   if (!user) return <PageLoading label="Opening your profile…" />;
@@ -13,6 +13,7 @@ export default function StudioProfile() {
       <PageHeader
         title="Your profile"
         subtitle="House file, contact details, and change password — temporary passwords stay valid until you update them."
+        onRefresh={() => refresh()}
       />
       <ProfileForm user={user} />
     </div>

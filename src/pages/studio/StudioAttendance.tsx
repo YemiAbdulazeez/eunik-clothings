@@ -8,8 +8,8 @@ import { formatWhen } from "@/lib/format";
 
 export default function StudioAttendance() {
   const { user } = useSession();
-  const { data: rows, loading } = useAsync(() => db.attendance.list(), []);
-  const { data: staff } = useAsync(() => db.people.staff().catch(() => []), []);
+  const { data: rows, loading, reload: reloadRows } = useAsync(() => db.attendance.list(), []);
+  const { data: staff, reload: reloadStaff } = useAsync(() => db.people.staff().catch(() => []), []);
   const names = Object.fromEntries((staff ?? []).map((item) => [item.id, item.name]));
   names[user?.id ?? ""] = user?.name ?? "You";
   const today = new Date().toISOString().slice(0, 10);
@@ -28,6 +28,7 @@ export default function StudioAttendance() {
       <PageHeader
         title="Staff attendance"
         subtitle="Floor and house clocks. Principle and manager see everyone."
+        onRefresh={() => Promise.all([reloadRows(), reloadStaff()])}
         actions={
           <div className="flex gap-2">
             <OsButton variant="gold" onClick={() => punch("in")}>

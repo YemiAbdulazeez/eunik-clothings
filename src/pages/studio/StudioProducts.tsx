@@ -1,6 +1,6 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Plus, Shirt } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload, { ImageUploadList } from "@/components/os/ImageUpload";
 import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
@@ -13,11 +13,11 @@ import { canDeleteProducts } from "@/lib/rbac";
 
 export default function StudioProducts() {
   const { id } = useParams();
-  const { data: products, loading: listLoading } = useAsync(
+  const { data: products, loading: listLoading, reload: reloadProducts } = useAsync(
     () => db.products.listAll().catch(() => db.products.list()),
     [],
   );
-  const { data: categories } = useAsync(() => db.categories.list(), []);
+  const { data: categories, reload: reloadCategories } = useAsync(() => db.categories.list(), []);
   const isNew = id === "new";
   const isForm = Boolean(id);
   const { data: fetched, loading: fetchLoading } = useAsync(
@@ -66,6 +66,7 @@ export default function StudioProducts() {
       <PageHeader
         title="Products"
         subtitle="Standalone catalogue. Price in naira, or mark request-for-price. Images upload from your device."
+        onRefresh={() => Promise.all([reloadProducts(), reloadCategories()])}
         actions={
           <Link to="/studio/products/new" className="os-pill inline-flex bg-gold text-ink">
             <Plus className="h-4 w-4" /> Add product
@@ -117,6 +118,29 @@ function ProductForm({
   });
   const [quote, setQuote] = useState(Boolean(existing?.priceOnRequest));
   const [busy, setBusy] = useState(false);
+  const [category, setCategory] = useState(existing?.category ?? categories[0]?.slug ?? "");
+  const [sku, setSku] = useState(existing?.sku ?? "");
+  const [skuBusy, setSkuBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isNew || !category) return;
+    let alive = true;
+    setSkuBusy(true);
+    void db.products
+      .nextSku(category)
+      .then((result) => {
+        if (alive) setSku(result.sku);
+      })
+      .catch(() => {
+        if (alive) setSku("");
+      })
+      .finally(() => {
+        if (alive) setSkuBusy(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [category, isNew]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,16 +148,24 @@ function ProductForm({
       toast.error("Upload at least one garment image.");
       return;
     }
+    if (!category) {
+      toast.error("Choose a collection first.");
+      return;
+    }
+    if (!existing && !sku) {
+      toast.error("SKU is still generating — wait a moment.");
+      return;
+    }
     const data = new FormData(event.currentTarget);
     setBusy(true);
     try {
       const uniqueImages = [...new Set(images.filter(Boolean))];
       const payload = {
-        sku: String(data.get("sku")),
+        sku: existing ? existing.sku : sku,
         name: String(data.get("name")),
         image: uniqueImages[0],
         images: uniqueImages,
-        category: String(data.get("category")),
+        category,
         priceKobo: quote ? 0 : nairaToKobo(Number(data.get("price") || 0)),
         priceOnRequest: quote,
         shortDescription: String(data.get("shortDescription")),
@@ -150,7 +182,7 @@ function ProductForm({
         toast.success("Look updated.");
       } else {
         await db.products.create(payload);
-        toast.success("Look added to the rail.");
+        toast.success(`Look ${sku} added to the rail.`);
       }
       navigate("/studio/products");
     } catch (error) {
@@ -173,7 +205,7 @@ function ProductForm({
       <PageHeader
         eyebrow="Product file"
         title={existing ? `Edit ${existing.sku}` : "Add a product"}
-        subtitle="Uploads, not URL fields. Request-for-price hides the naira until desk quotes."
+        subtitle="Choose the collection first — SKU is assigned automatically (e.g. AGB-000234). Request-for-price hides the naira until desk quotes."
         actions={
           <Link to="/studio/products" className="os-pill border border-line">
             Back to rail
@@ -183,20 +215,36 @@ function ProductForm({
       <form onSubmit={(event) => void save(event)} className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <SectionCard title="Details">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="SKU">
-              <input name="sku" required defaultValue={existing?.sku} disabled={!isNew && Boolean(existing)} className={inputClass} />
-            </Field>
-            <Field label="Name">
-              <input name="name" required defaultValue={existing?.name} className={inputClass} />
-            </Field>
             <Field label="Collection">
-              <select name="category" defaultValue={existing?.category ?? categories[0]?.slug} className={inputClass}>
+              <select
+                name="category"
+                required
+                value={category}
+                disabled={!isNew && Boolean(existing)}
+                onChange={(event) => setCategory(event.target.value)}
+                className={inputClass}
+              >
+                {!categories.length ? <option value="">No collections yet</option> : null}
                 {categories.map((item) => (
                   <option key={item.slug} value={item.slug}>
                     {item.name}
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label="SKU (auto)">
+              <input
+                name="sku"
+                required
+                value={sku}
+                readOnly
+                disabled={skuBusy}
+                className={`${inputClass} bg-paper`}
+                placeholder={skuBusy ? "Assigning…" : "Pick a collection"}
+              />
+            </Field>
+            <Field label="Name">
+              <input name="name" required defaultValue={existing?.name} className={inputClass} />
             </Field>
             <Field label="Colour">
               <input name="colour" defaultValue={existing?.colour} className={inputClass} />
@@ -218,7 +266,13 @@ function ProductForm({
             </div>
             {!quote ? (
               <Field label="Price ₦">
-                <input name="price" type="number" required defaultValue={existing && !existing.priceOnRequest ? existing.priceKobo / 100 : 95000} className={inputClass} />
+                <input
+                  name="price"
+                  type="number"
+                  required
+                  defaultValue={existing && !existing.priceOnRequest ? existing.priceKobo / 100 : 95000}
+                  className={inputClass}
+                />
               </Field>
             ) : null}
             <Field label="Featured rank (0 = off)">
@@ -250,14 +304,11 @@ function ProductForm({
                 <ImageUpload label="First photo" folder="looks" onChange={(url) => setImages([url])} />
               </div>
             ) : null}
-            <p className="mt-2 flex items-center gap-2 text-xs">
-              <Shirt className="h-3 w-3" /> Files stay on this device in the demo book.
-            </p>
           </SectionCard>
           <div className="flex flex-wrap gap-2">
-          <OsButton type="submit" disabled={busy} loading={busy}>
-            {existing ? "Save look" : "Add look"}
-          </OsButton>
+            <OsButton type="submit" disabled={busy || skuBusy} loading={busy}>
+              {existing ? "Save look" : "Add look"}
+            </OsButton>
             {existing && canDelete ? (
               <OsButton variant="danger" onClick={() => remove()}>
                 Delete
@@ -269,3 +320,4 @@ function ProductForm({
     </div>
   );
 }
+

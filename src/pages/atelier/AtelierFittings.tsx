@@ -5,11 +5,15 @@ import { useAsync } from "@/hooks/useAsync";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AtelierFittings() {
-  const { data: fittings, loading } = useAsync(() => db.fittings.list(), []);
+  const { data: fittings, loading, reload } = useAsync(() => db.fittings.list(), []);
   if (loading && !fittings) return <PageLoading />;
   return (
     <div className="space-y-6">
-      <PageHeader title="Fittings" subtitle="Mark done when the client has stood. Ready still needs QC." />
+      <PageHeader
+        title="Fittings"
+        subtitle="Mark done when the client has stood. Ready still needs QC."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {(fittings ?? []).map((item) => (
           <SectionCard key={item.id} title={`Order ${item.orderId.replace("order_", "#")}`} action={<StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />}>

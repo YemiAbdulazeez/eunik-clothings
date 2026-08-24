@@ -67,6 +67,7 @@ export default function StudioCollections() {
       <PageHeader
         title="Collections"
         subtitle="Standalone rail — add, edit or delete a house collection. Not part of Content."
+        onRefresh={() => Promise.all([reload(), reloadCounts()])}
         actions={
           <OsButton
             variant="gold"

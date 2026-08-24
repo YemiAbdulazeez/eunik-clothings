@@ -7,7 +7,7 @@ import { statusLabel, statusTone } from "@/lib/format";
 import { useMemo, useState } from "react";
 
 export default function StudioOrders() {
-  const { data: orders, loading } = useAsync(() => db.orders.listAll(), []);
+  const { data: orders, loading, reload } = useAsync(() => db.orders.listAll(), []);
   const [filter, setFilter] = useState("all");
   const rows = useMemo(
     () => (orders ?? []).filter((item) => (filter === "all" ? true : item.status === filter || item.kind === filter)),
@@ -18,7 +18,7 @@ export default function StudioOrders() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Orders" subtitle="Ready to wear, made to measure, and custom orders." />
+      <PageHeader title="Orders" subtitle="Ready to wear, made to measure, and custom orders." onRefresh={() => reload()} />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="All" value={String(orders?.length ?? 0)} />
         <StatCard label="In production" value={String(orders?.filter((item) => item.status === "production").length ?? 0)} />

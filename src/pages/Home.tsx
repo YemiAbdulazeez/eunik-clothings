@@ -11,7 +11,7 @@ import { padCount } from "@/lib/whatsapp";
 export default function Home() {
   const [slide, setSlide] = useState(0);
   const { data: homepage } = useAsync(() => db.content.homepage(), []);
-  const { data: featured } = useAsync(() => db.products.featured(), []);
+  const { data: featured } = useAsync(() => db.products.featured(20), []);
   const { data: categories } = useAsync(() => db.categories.list(), []);
   const { data: counts } = useAsync(() => db.categories.counts(), []);
   const { data: coupon } = useAsync(() => db.content.coupon("EUNIK-DEC-2024"), []);
@@ -21,7 +21,13 @@ export default function Home() {
 
   const slides = homepage?.hero ?? [];
   const active = slides[slide] ?? slides[0];
-  const homeCategories = (categories ?? []).filter((category) => category.slug !== "suit");
+  const latestCollections = useMemo(() => {
+    const list = [...(categories ?? [])].sort(
+      (a, b) => (b.sortOrder ?? 0) - (a.sortOrder ?? 0),
+    );
+    return list.slice(0, 4);
+  }, [categories]);
+  const latestProducts = featured ?? [];
   const promoLive = Boolean(
     homepage?.showPromo && coupon?.active && new Date(coupon.expiresAt).getTime() > Date.now(),
   );
@@ -114,8 +120,22 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-[1600px] px-4 pb-4 lg:px-10">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="font-alt text-3xl tracking-tight text-ink md:text-4xl">
+              Latest <span className="highlight font-semibold">collections</span>
+            </h2>
+            <p className="mt-2 text-base">The newest house rails on the floor.</p>
+          </div>
+          <Link
+            to="/collection"
+            className="inline-flex items-center gap-2 rounded-full border border-ink px-6 py-2.5 text-sm text-ink transition hover:bg-ink hover:text-white"
+          >
+            View more <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {homeCategories.map((category) => (
+          {latestCollections.map((category) => (
             <div key={category.slug} className="collection-card relative overflow-hidden">
               <Link to={category.path} className="block overflow-hidden">
                 <img
@@ -141,14 +161,22 @@ export default function Home() {
       <section id="featured" className="mx-auto max-w-[1600px] px-4 py-20 lg:px-10">
         <div className="mb-12 text-center">
           <h2 className="font-alt text-4xl tracking-tight text-ink md:text-5xl">
-            Best seller <span className="highlight font-semibold">Products</span>
+            Latest <span className="highlight font-semibold">Products</span>
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-lg leading-7">
             Kindly click on the product image to instantly order - preferences like color, design
             and size can be changed during order process.
           </p>
         </div>
-        <ProductGrid products={featured ?? []} />
+        <ProductGrid products={latestProducts} />
+        <div className="mt-12 flex justify-center">
+          <Link
+            to="/shop"
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3 text-sm text-white transition hover:bg-ink/90"
+          >
+            More products <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </section>
 
       {promoLive ? (

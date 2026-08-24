@@ -3,7 +3,7 @@ import ProfileForm from "@/components/os/ProfileForm";
 import { useSession } from "@/context/SessionProvider";
 
 export default function AccountProfile() {
-  const { user, loading } = useSession();
+  const { user, loading, refresh } = useSession();
 
   if (loading) return <PageLoading label="Opening your profile…" />;
   if (!user) return <PageLoading label="Opening your profile…" />;
@@ -13,6 +13,7 @@ export default function AccountProfile() {
       <PageHeader
         title="Your profile"
         subtitle="Name, contact details, and a password that is only yours. Temporary passwords stay valid until you change them."
+        onRefresh={() => refresh()}
       />
       <ProfileForm user={user} />
     </div>

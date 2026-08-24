@@ -15,7 +15,11 @@ export default function StudioQuotes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Quotes" subtitle="Sent quotes wait in the client book until accept or reject." />
+      <PageHeader
+        title="Quotes"
+        subtitle="Sent quotes wait in the client book until accept or reject."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="On file" value={String(quotes?.length ?? 0)} />
         <StatCard label="Waiting accept" value={String(waiting)} tone="gold" />

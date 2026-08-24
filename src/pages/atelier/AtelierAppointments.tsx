@@ -8,14 +8,18 @@ import { canConfirmAppointments } from "@/lib/rbac";
 
 export default function AtelierAppointments() {
   const { user } = useSession();
-  const { data: rows, loading } = useAsync(() => db.appointments.listAll(), []);
+  const { data: rows, loading, reload } = useAsync(() => db.appointments.listAll(), []);
   const canConfirm = user ? canConfirmAppointments(user) : false;
 
   if (loading && !rows) return <PageLoading />;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Floor book" subtitle="Confirm walk-ins from the desk if your role allows it." />
+      <PageHeader
+        title="Floor book"
+        subtitle="Confirm walk-ins from the desk if your role allows it."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {(rows ?? []).map((row) => (
           <SectionCard

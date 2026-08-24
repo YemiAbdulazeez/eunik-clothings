@@ -6,7 +6,7 @@ import { formatNaira } from "@/lib/money";
 import { formatWhen, statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioPayments() {
-  const { data: payments, loading } = useAsync(() => db.payments.list(), []);
+  const { data: payments, loading, reload } = useAsync(() => db.payments.list(), []);
   const waiting = (payments ?? []).filter((item) => item.status === "awaiting_verification");
   const ok = (payments ?? []).filter((item) => item.status === "successful").reduce((sum, item) => sum + item.amountKobo, 0);
 
@@ -14,7 +14,11 @@ export default function StudioPayments() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payments" subtitle="Approve bank receipts. Demo Paystack is already marked successful — no card is charged." />
+      <PageHeader
+        title="Payments"
+        subtitle="Approve bank receipts. Demo Paystack is already marked successful — no card is charged."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Collected" value={formatNaira(ok)} />
         <StatCard label="Awaiting review" value={String(waiting.length)} tone={waiting.length ? "alert" : "plain"} />

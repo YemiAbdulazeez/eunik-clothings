@@ -11,10 +11,10 @@ const TABS = ["Homepage", "Magazine", "Lookbook", "Contact"] as const;
 
 export default function StudioContent() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Homepage");
-  const { data: home, loading: homeLoading } = useAsync(() => db.content.homepage(), []);
-  const { data: journal, loading: journalLoading } = useAsync(() => db.content.journal(), []);
-  const { data: lookbook, loading: lookbookLoading } = useAsync(() => db.content.lookbook(), []);
-  const { data: mailbox } = useAsync(() => db.content.mailbox().catch(() => []), []);
+  const { data: home, loading: homeLoading, reload: reloadHome } = useAsync(() => db.content.homepage(), []);
+  const { data: journal, loading: journalLoading, reload: reloadJournal } = useAsync(() => db.content.journal(), []);
+  const { data: lookbook, loading: lookbookLoading, reload: reloadLookbook } = useAsync(() => db.content.lookbook(), []);
+  const { data: mailbox, reload: reloadMailbox } = useAsync(() => db.content.mailbox().catch(() => []), []);
 
   if ((homeLoading || journalLoading || lookbookLoading) && !home && !journal && !lookbook) {
     return <PageLoading />;
@@ -25,6 +25,7 @@ export default function StudioContent() {
       <PageHeader
         title="Content"
         subtitle="Magazine, lookbook and the house front. Products and collections live as standalone tools."
+        onRefresh={() => Promise.all([reloadHome(), reloadJournal(), reloadLookbook(), reloadMailbox()])}
       />
       <div className="flex flex-wrap gap-1 rounded-full border border-line bg-white p-1">
         {TABS.map((item) => (

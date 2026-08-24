@@ -248,6 +248,11 @@ export const httpProducts = {
     const data = await api<{ product: unknown }>(`/studio/products/${id}`);
     return data.product;
   },
+  async nextSku(category: string) {
+    const qs = new URLSearchParams({ category });
+    const data = await api<{ sku: string; prefix: string }>(`/studio/products/next-sku?${qs}`);
+    return data;
+  },
   async create(payload: Record<string, unknown>) {
     const data = await api<{ product: unknown }>("/studio/products", { method: "POST", body: payload });
     return data.product;

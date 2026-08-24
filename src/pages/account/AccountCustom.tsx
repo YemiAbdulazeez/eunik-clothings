@@ -51,6 +51,7 @@ export default function AccountCustom() {
       <PageHeader
         title="Custom designs"
         subtitle="Send a custom request. When we quote, review the document, then accept or decline."
+        onRefresh={() => Promise.all([reloadRequests(), reloadQuotes()])}
         actions={
           <OsButton variant="gold" onClick={() => setOpen(true)}>
             New request

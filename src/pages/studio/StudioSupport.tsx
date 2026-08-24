@@ -6,15 +6,19 @@ import { useAsync } from "@/hooks/useAsync";
 import { statusTone } from "@/lib/format";
 
 export default function StudioSupport() {
-  const { data: tickets, loading } = useAsync(() => db.tickets.list(), []);
-  const { data: reviews } = useAsync(() => db.reviews.listAll().catch(() => []), []);
+  const { data: tickets, loading, reload: reloadTickets } = useAsync(() => db.tickets.list(), []);
+  const { data: reviews, reload: reloadReviews } = useAsync(() => db.reviews.listAll().catch(() => []), []);
   const [reply, setReply] = useState<Record<string, string>>({});
 
   if (loading && !tickets) return <PageLoading />;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Customer support" subtitle="Desk inbox and magazine reviews waiting to go live." />
+      <PageHeader
+        title="Customer support"
+        subtitle="Desk inbox and magazine reviews waiting to go live."
+        onRefresh={() => Promise.all([reloadTickets(), reloadReviews()])}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         {(tickets ?? []).map((item) => (
           <SectionCard

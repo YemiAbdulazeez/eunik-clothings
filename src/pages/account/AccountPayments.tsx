@@ -57,7 +57,11 @@ export default function AccountPayments() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payments" subtitle="Paystack popup or bank transfer with a receipt. Naira only." />
+      <PageHeader
+        title="Payments"
+        subtitle="Paystack popup or bank transfer with a receipt. Naira only."
+        onRefresh={() => Promise.all([refreshOrders(), refreshPayments()])}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Settled" value={formatNaira(settled)} />
         <StatCard label="Open balance" value={formatNaira(openTotal)} tone={openTotal ? "gold" : "plain"} />

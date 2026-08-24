@@ -8,13 +8,13 @@ import { ALL_STAGES, canAdvanceStage, nextLegalStage } from "@/lib/productionSta
 
 export default function AtelierQueue() {
   const { user } = useSession();
-  const { data: board, loading } = useAsync(() => db.production.listBoard(), []);
+  const { data: board, loading, reload } = useAsync(() => db.production.listBoard(), []);
 
   if (loading && !board) return <PageLoading />;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Queue" subtitle="Due dates and stage. Advance from the bench." />
+      <PageHeader title="Queue" subtitle="Due dates and stage. Advance from the bench." onRefresh={() => reload()} />
       <SectionCard>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">

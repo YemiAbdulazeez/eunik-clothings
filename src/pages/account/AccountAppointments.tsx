@@ -8,7 +8,7 @@ import { useSession } from "@/context/SessionProvider";
 
 export default function AccountAppointments() {
   const { user } = useSession();
-  const { data: rows, loading } = useAsync(() => db.appointments.listMine(), []);
+  const { data: rows, loading, reload } = useAsync(() => db.appointments.listMine(), []);
   const [open, setOpen] = useState(false);
 
   if (loading && !rows) return <PageLoading />;
@@ -34,6 +34,7 @@ export default function AccountAppointments() {
       <PageHeader
         title="Appointments"
         subtitle="Ibadan HQ — measurements, fittings, consultations."
+        onRefresh={() => reload()}
         actions={
           <OsButton onClick={() => setOpen(true)}>Request a slot</OsButton>
         }

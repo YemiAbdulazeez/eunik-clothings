@@ -6,11 +6,11 @@ import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 
 export default function AccountWishlist() {
-  const { data: items, loading } = useAsync(() => db.wishlist.list(), []);
+  const { data: items, loading, reload } = useAsync(() => db.wishlist.list(), []);
   if (loading && !items) return <PageLoading />;
   return (
     <div className="space-y-6">
-      <PageHeader title="Wishlist" subtitle="Looks you asked the house to keep." />
+      <PageHeader title="Wishlist" subtitle="Looks you asked the house to keep." onRefresh={() => reload()} />
       {!items?.length ? (
         <EmptyState
           title="Empty"

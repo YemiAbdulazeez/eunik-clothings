@@ -817,17 +817,17 @@ export const db = {
       await delay();
       return getState().products.find((item) => item.sku.toLowerCase() === sku.toLowerCase()) ?? null;
     },
-    async featured() {
+    async featured(limit = 20) {
       if (HTTP_ENABLED) {
         const products = (await httpProducts.list()) as Product[];
-        // Public list is newest-first; show the latest looks on the front page
-        return products.slice(0, 8);
+        // Public list is newest-first
+        return products.slice(0, limit);
       }
       await delay();
       return [...getState().products]
         .filter((item) => item.status === "live")
         .reverse()
-        .slice(0, 8);
+        .slice(0, limit);
     },
     async listAll() {
       if (HTTP_ENABLED) return (await httpProducts.listAll()) as Product[];
@@ -854,8 +854,29 @@ export const db = {
         ) ?? null
       );
     },
+    async nextSku(category: string): Promise<{ sku: string; prefix: string }> {
+      if (HTTP_ENABLED) return httpProducts.nextSku(category);
+      await delay(40);
+      const prefixMap: Record<string, string> = {
+        agbada: "AGB",
+        aranbada: "ARA",
+        senator: "SEN",
+        "men-senator": "SEN",
+        esiki: "ESK",
+        suit: "SUIT",
+      };
+      const cleaned = category.replace(/[^a-z0-9]/gi, "").slice(0, 3).toUpperCase();
+      const prefix = prefixMap[category] ?? (cleaned || "SKU");
+      let max = 0;
+      for (const item of getState().products) {
+        if (!item.sku.toUpperCase().startsWith(`${prefix}-`)) continue;
+        const match = item.sku.match(/-(\d+)\s*$/);
+        if (match) max = Math.max(max, Number(match[1]));
+      }
+      return { sku: `${prefix}-${String(max + 1).padStart(6, "0")}`, prefix };
+    },
     async create(input: {
-      sku: string;
+      sku?: string;
       name: string;
       image: string;
       images?: string[];
@@ -874,7 +895,10 @@ export const db = {
       if (HTTP_ENABLED) return (await httpProducts.create(input)) as Product;
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "add a look", "products");
-      const sku = input.sku.trim().toUpperCase();
+      const auto = input.sku?.trim()
+        ? { sku: input.sku.trim().toUpperCase() }
+        : await this.nextSku(input.category);
+      const sku = auto.sku;
       if (getState().products.some((item) => item.sku === sku)) throw new Error("That SKU is already on the rail.");
       const images = input.images?.length ? input.images : [input.image];
       const product: Product = {

@@ -20,8 +20,8 @@ function columnForStage(stage: ProductionStage): string {
 
 export default function StudioProduction() {
   const { user } = useSession();
-  const { data: board, loading } = useAsync(() => db.production.listBoard(), []);
-  const { data: staff } = useAsync(() => db.people.staff().catch(() => []), []);
+  const { data: board, loading, reload: reloadBoard } = useAsync(() => db.production.listBoard(), []);
+  const { data: staff, reload: reloadStaff } = useAsync(() => db.people.staff().catch(() => []), []);
 
   if (loading && !board) return <PageLoading />;
 
@@ -39,7 +39,11 @@ export default function StudioProduction() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Production" subtitle="Advance an order on the floor. Clients see the same progress." />
+      <PageHeader
+        title="Production"
+        subtitle="Advance an order on the floor. Clients see the same progress."
+        onRefresh={() => Promise.all([reloadBoard(), reloadStaff()])}
+      />
       <div className="grid gap-4 sm:grid-cols-4">
         {columns.slice(0, 4).map((column) => (
           <StatCard

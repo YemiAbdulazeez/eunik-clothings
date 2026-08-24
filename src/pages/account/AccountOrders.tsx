@@ -12,7 +12,7 @@ import { shopHref } from "@/lib/osNav";
 
 export default function AccountOrders() {
   const location = useLocation();
-  const { data: bundle, loading, error } = useAsync(async () => {
+  const { data: bundle, loading, error, reload } = useAsync(async () => {
     const rows = await db.orders.listMine();
     const stages = await Promise.all(rows.map((order) => db.production.getByOrder(order.id)));
     return rows.map((order, index) => ({ order, stage: stages[index]?.stage ?? null }));
@@ -34,6 +34,7 @@ export default function AccountOrders() {
       <PageHeader
         title="Orders"
         subtitle="Track every step, re-order a finished look, or pre-order the next cloth."
+        onRefresh={() => reload()}
         actions={
           <Link to={shopHref(location.pathname)} className="os-pill bg-ink text-white">
             Shop again

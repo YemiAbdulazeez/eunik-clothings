@@ -7,11 +7,11 @@ import { toast } from "sonner";
 
 export default function AccountMeasurements() {
   const { user } = useSession();
-  const { data: profiles, loading } = useAsync(
+  const { data: profiles, loading, reload: reloadProfiles } = useAsync(
     () => (user ? db.measurements.listByCustomer(user.id) : Promise.resolve([])),
     [user?.id],
   );
-  const { data: appointments } = useAsync(() => db.appointments.listMine(), []);
+  const { data: appointments, reload: reloadAppointments } = useAsync(() => db.appointments.listMine(), []);
 
   if (loading && !profiles) return <PageLoading />;
 
@@ -20,6 +20,7 @@ export default function AccountMeasurements() {
       <PageHeader
         title="Measurements"
         subtitle="Profiles freeze onto a ticket when we cut. Incomplete rows stay in the book."
+        onRefresh={() => Promise.all([reloadProfiles(), reloadAppointments()])}
         actions={
           <Link to="/account/appointments" className="os-pill bg-gold text-ink">
             Book a measure

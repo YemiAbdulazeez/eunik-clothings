@@ -12,7 +12,7 @@ export default function StudioSettings() {
   const { user } = useSession();
   const isPrincipal = user?.role === "super_admin";
   const { data: settings, reload, loading } = useAsync(() => db.settings.get(), []);
-  const { data: logs } = useAsync(
+  const { data: logs, reload: reloadLogs } = useAsync(
     () => (isPrincipal || user?.role === "manager" ? db.audit.list() : Promise.resolve([])),
     [user?.role],
   );
@@ -72,6 +72,7 @@ export default function StudioSettings() {
             ? "Company profile, bank details, and house defaults. Changes apply across the site."
             : "House presentation. Only the principal can edit company and bank details."
         }
+        onRefresh={() => Promise.all([reload(), reloadLogs()])}
       />
 
       {isPrincipal ? (

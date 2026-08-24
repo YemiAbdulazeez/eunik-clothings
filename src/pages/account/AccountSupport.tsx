@@ -8,7 +8,7 @@ import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountSupport() {
   const { user } = useSession();
-  const { data: tickets, loading } = useAsync(() => db.tickets.listMine(), []);
+  const { data: tickets, loading, reload } = useAsync(() => db.tickets.listMine(), []);
   const [busy, setBusy] = useState(false);
 
   if (loading && !tickets) return <PageLoading />;
@@ -36,7 +36,11 @@ export default function AccountSupport() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Customer support" subtitle="The Ibadan desk reads these. Stay on this book — no need to leave." />
+      <PageHeader
+        title="Customer support"
+        subtitle="The Ibadan desk reads these. Stay on this book — no need to leave."
+        onRefresh={() => reload()}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="New message">
           <form onSubmit={(event) => void submit(event)} className="space-y-3">

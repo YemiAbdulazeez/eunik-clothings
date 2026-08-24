@@ -34,7 +34,11 @@ export default function StudioCustom() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Custom requests" subtitle="Edit the document, preview, then send. Clients accept in their book." />
+      <PageHeader
+        title="Custom requests"
+        subtitle="Edit the document, preview, then send. Clients accept in their book."
+        onRefresh={() => Promise.all([reload(), reloadQuotes()])}
+      />
       {(requests ?? []).map((item) => {
         const quote = (quotes ?? []).find((entry) => entry.requestId === item.id);
         const customerName = item.customerName ?? "Client";

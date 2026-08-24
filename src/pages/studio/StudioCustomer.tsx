@@ -10,11 +10,11 @@ import { statusLabel, statusTone } from "@/lib/format";
 export default function StudioCustomer() {
   const { id = "" } = useParams();
   const { data: person, reload, loading } = useAsync(() => db.people.get(id), [id]);
-  const { data: orders } = useAsync(
+  const { data: orders, reload: reloadOrders } = useAsync(
     () => db.orders.listAll().then((rows) => rows.filter((row) => row.customerId === id)),
     [id],
   );
-  const { data: profiles } = useAsync(() => db.measurements.listByCustomer(id).catch(() => []), [id]);
+  const { data: profiles, reload: reloadProfiles } = useAsync(() => db.measurements.listByCustomer(id).catch(() => []), [id]);
   const outstanding = (orders ?? []).reduce((sum, item) => sum + Math.max(0, item.totalKobo - item.paidKobo), 0);
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +49,7 @@ export default function StudioCustomer() {
         eyebrow="Customer dossier"
         title={person.name}
         subtitle={`${person.email} · ${person.phone} · ${person.city}`}
+        onRefresh={() => Promise.all([reload(), reloadOrders(), reloadProfiles()])}
       />
       <SectionCard title="Client details">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
