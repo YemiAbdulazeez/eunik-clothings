@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import LazyImage from "@/components/LazyImage";
@@ -16,6 +16,7 @@ import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/context/CartProvider";
 import { inAccount, mtmHref } from "@/lib/osNav";
 import { canShop, isHouseStaff } from "@/lib/rbac";
+import { trackEvent } from "@/lib/track";
 
 export default function ProductDetail() {
   const { sku = "" } = useParams();
@@ -36,6 +37,10 @@ export default function ProductDetail() {
   const [size, setSize] = useState("");
   const [photo, setPhoto] = useState(0);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (product?.sku) trackEvent("view_item", { sku: product.sku, path: location.pathname });
+  }, [product?.sku, location.pathname]);
 
   const shell = (title: string, body: ReactNode) =>
     embedded ? (
@@ -79,6 +84,7 @@ export default function ProductDetail() {
         variantId: variants?.find((item) => item.size === size)?.id,
       });
       await refreshCart();
+      trackEvent("add_to_bag", { sku: look.sku, path: location.pathname });
       toast.success(kind === "preorder" || out ? "Pre-order in your bag." : "Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");

@@ -1,4 +1,4 @@
-import { type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
@@ -16,6 +16,7 @@ export default function StudioSettings() {
     () => (isPrincipal || user?.role === "manager" ? db.audit.list() : Promise.resolve([])),
     [user?.role],
   );
+  const [busy, setBusy] = useState(false);
 
   async function reset() {
     if (!window.confirm("Reset local presentation data? Live Postgres data is not wiped.")) return;
@@ -29,29 +30,34 @@ export default function StudioSettings() {
     if (!isPrincipal || !settings) return;
     const data = new FormData(event.currentTarget);
     const freeShippingNaira = Number(data.get("freeShippingNaira") || 0);
-    await db.settings.update({
-      company: String(data.get("company") ?? ""),
-      rc: String(data.get("rc") ?? ""),
-      phone: String(data.get("phone") ?? ""),
-      email: String(data.get("email") ?? ""),
-      whatsapp: String(data.get("whatsapp") ?? ""),
-      instagram: String(data.get("instagram") ?? ""),
-      siteUrl: String(data.get("siteUrl") ?? ""),
-      address: String(data.get("address") ?? ""),
-      pickupLocation: String(data.get("pickupLocation") ?? ""),
-      aboutJoinLine: String(data.get("aboutJoinLine") ?? ""),
-      depositPercent: Number(data.get("depositPercent") || 50),
-      freeShippingKobo: nairaToKobo(freeShippingNaira),
-      demoMode: data.get("demoMode") === "on",
-      bank: {
-        bankName: String(data.get("bankName") ?? ""),
-        accountName: String(data.get("accountName") ?? ""),
-        accountNumber: String(data.get("accountNumber") ?? ""),
-        narrationHint: String(data.get("narrationHint") ?? ""),
-      },
-    });
-    toast.success("House settings saved.");
-    reload();
+    setBusy(true);
+    try {
+      await db.settings.update({
+        company: String(data.get("company") ?? ""),
+        rc: String(data.get("rc") ?? ""),
+        phone: String(data.get("phone") ?? ""),
+        email: String(data.get("email") ?? ""),
+        whatsapp: String(data.get("whatsapp") ?? ""),
+        instagram: String(data.get("instagram") ?? ""),
+        siteUrl: String(data.get("siteUrl") ?? ""),
+        address: String(data.get("address") ?? ""),
+        pickupLocation: String(data.get("pickupLocation") ?? ""),
+        aboutJoinLine: String(data.get("aboutJoinLine") ?? ""),
+        depositPercent: Number(data.get("depositPercent") || 50),
+        freeShippingKobo: nairaToKobo(freeShippingNaira),
+        demoMode: data.get("demoMode") === "on",
+        bank: {
+          bankName: String(data.get("bankName") ?? ""),
+          accountName: String(data.get("accountName") ?? ""),
+          accountNumber: String(data.get("accountNumber") ?? ""),
+          narrationHint: String(data.get("narrationHint") ?? ""),
+        },
+      });
+      toast.success("House settings saved.");
+      await reload();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!settings) return null;
@@ -149,7 +155,9 @@ export default function StudioSettings() {
             </label>
           </SectionCard>
 
-          <OsButton type="submit">Save settings</OsButton>
+          <OsButton type="submit" loading={busy} loadingText="Saving…">
+            Save settings
+          </OsButton>
         </form>
       ) : (
         <SectionCard title="House">
@@ -166,7 +174,7 @@ export default function StudioSettings() {
           Reset only clears the browser demo store. Live catalog, settings, and orders stay in Postgres.
         </p>
         <div className="mt-4">
-          <OsButton variant="ghost" onClick={() => void reset()}>
+          <OsButton variant="ghost" onClick={() => reset()}>
             Reset local presentation data
           </OsButton>
         </div>

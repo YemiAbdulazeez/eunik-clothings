@@ -523,6 +523,9 @@ export const db = {
       if (!user || user.password !== password) {
         throw new Error("Those house credentials were not recognised.");
       }
+      if (user.suspendedAt) {
+        throw new ForbiddenError("This house account is suspended. Speak to the house principal.");
+      }
       const isStaff = user.role !== "client";
       if (opts.portal === "client" && isStaff) {
         throw new ForbiddenError("This is a house staff account. Use House sign in instead of My account.");
@@ -831,6 +834,25 @@ export const db = {
       await delay();
       assertRoles(["super_admin", "manager", "content"], "list the catalogue file", "products");
       return getState().products;
+    },
+    async getById(id: string) {
+      if (HTTP_ENABLED) {
+        try {
+          return (await httpProducts.getById(id)) as Product;
+        } catch {
+          return (await httpProducts.get(id).catch(() => null)) as Product | null;
+        }
+      }
+      await delay();
+      const key = id.trim().toLowerCase();
+      return (
+        getState().products.find(
+          (item) =>
+            item.id.toLowerCase() === key ||
+            item.sku.toLowerCase() === key ||
+            item.slug.toLowerCase() === key,
+        ) ?? null
+      );
     },
     async create(input: {
       sku: string;
@@ -1322,18 +1344,38 @@ export const db = {
     },
     async updateStatus(id: string, status: Order["status"]) {
       if (HTTP_ENABLED) {
-        await httpOrders.updateStatus(id, status);
-        return (await httpOrders.get(id)) as Order;
+        const updated = await httpOrders.updateStatus(id, status);
+        return (updated ?? (await httpOrders.get(id))) as Order;
       }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "desk"], "update order status", "orders");
       mutate((draft) => {
         const order = draft.orders.find((item) => item.id === id);
-        if (order) {
-          if (status === "cancelled" && order.kind === "ready_to_wear") {
-            applyStockForOrderItems(draft, id, 1);
+        if (!order) return;
+        if (status === "cancelled" && order.kind === "ready_to_wear") {
+          applyStockForOrderItems(draft, id, 1);
+        }
+        order.status = status;
+        if (status === "production" || status === "processing") {
+          const existing = draft.productionOrders.find((item) => item.orderId === id);
+          if (!existing) {
+            draft.productionOrders.unshift({
+              id: `prod_${order.number}`,
+              orderId: id,
+              customerId: order.customerId,
+              garment: order.name,
+              sku: order.sku,
+              stage: order.kind === "ready_to_wear" ? "cutting" : "measurements_confirmed",
+              assigneeId: pickFloorTailor(draft),
+              dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+            });
           }
-          order.status = status;
+        }
+        if (status === "ready" || status === "delivered" || status === "dispatched") {
+          const prod = draft.productionOrders.find((item) => item.orderId === id);
+          if (prod) {
+            prod.stage = status === "ready" ? "ready" : "completed";
+          }
         }
       });
       audit(actor.id, "order.status", `#${id} → ${status}`);
@@ -1381,8 +1423,13 @@ export const db = {
       });
     },
     async items(orderId: string) {
+      if (HTTP_ENABLED) {
+        const order = (await httpOrders.get(orderId)) as Order & {
+          items?: { id: string; name: string; qty: number; unitKobo: number; sku?: string }[];
+        };
+        return order?.items ?? [];
+      }
       await delay(40);
-      if (HTTP_ENABLED) return [];
       return getState().orderItems.filter((item) => item.orderId === orderId);
     },
     async trackPublic(number: string) {
@@ -1805,6 +1852,10 @@ export const db = {
       });
     },
     async getByOrder(orderId: string) {
+      if (HTTP_ENABLED) {
+        const board = (await httpProduction.list()) as ProductionOrder[];
+        return board.find((item) => item.orderId === orderId) ?? null;
+      }
       await delay(40);
       return getState().productionOrders.find((item) => item.orderId === orderId) ?? null;
     },
@@ -2370,9 +2421,18 @@ export const db = {
       >,
     ) {
       if (HTTP_ENABLED) {
-        if (patch.role || patch.navSections) {
-          if (patch.navSections) await httpPeople.setNav(id, patch.navSections as string[]);
-          return (await httpPeople.getCustomer(id).catch(() => null)) as PublicUser;
+        if (patch.role || patch.department !== undefined || patch.jobTitle !== undefined) {
+          await httpPeople.updateStaff(id, {
+            role: patch.role,
+            department: patch.department,
+            jobTitle: patch.jobTitle,
+          });
+        }
+        if (patch.navSections) await httpPeople.setNav(id, patch.navSections as string[]);
+        if (patch.role || patch.navSections || patch.department !== undefined || patch.jobTitle !== undefined) {
+          const staff = (await httpPeople.listStaff()) as PublicUser[];
+          const found = staff.find((item) => item.id === id);
+          if (found) return found;
         }
         return (await httpPeople.updateCustomer(id, patch)) as PublicUser;
       }
@@ -2430,10 +2490,14 @@ export const db = {
           email: input.email,
           name: input.name,
           firstName: input.firstName,
+          phone: input.phone,
+          city: "Ibadan",
           role: input.role,
           navSections: input.navSections ?? [],
           mustChangePassword: true,
-        } as PublicUser;
+          tempPassword: hired.tempPassword,
+          emailSent: hired.emailSent,
+        } as PublicUser & { tempPassword?: string; emailSent?: boolean };
       }
       await delay();
       const actor = requireUser();
@@ -2468,7 +2532,11 @@ export const db = {
         draft.users.push(user);
       });
       audit(actor.id, "people.hire", user.email);
-      return publicUser(user);
+      return {
+        ...publicUser(user),
+        tempPassword: DEMO_PASSWORD,
+        emailSent: false,
+      } as PublicUser & { tempPassword?: string; emailSent?: boolean };
     },
     async setNav(userId: string, navSections: NavSection[]) {
       if (HTTP_ENABLED) { await httpPeople.setNav(userId, navSections); return null as unknown as PublicUser; }
@@ -2488,6 +2556,62 @@ export const db = {
       });
       audit(actor.id, "people.nav", `${target.email} · ${next.join(",")}`);
       return publicUser(getState().users.find((item) => item.id === userId)!);
+    },
+    async suspend(id: string) {
+      if (HTTP_ENABLED) {
+        await httpPeople.suspend(id);
+        return;
+      }
+      await delay();
+      const actor = requireUser();
+      if (actor.role !== "super_admin") throw new ForbiddenError("Only the house principal can suspend staff.");
+      mutate((draft) => {
+        const row = draft.users.find((item) => item.id === id);
+        if (row && row.role !== "super_admin") row.suspendedAt = nowIso();
+      });
+      audit(actor.id, "people.suspend", id);
+    },
+    async unsuspend(id: string) {
+      if (HTTP_ENABLED) {
+        await httpPeople.unsuspend(id);
+        return;
+      }
+      await delay();
+      const actor = requireUser();
+      if (actor.role !== "super_admin") throw new ForbiddenError("Only the house principal can restore staff.");
+      mutate((draft) => {
+        const row = draft.users.find((item) => item.id === id);
+        if (row) row.suspendedAt = null;
+      });
+      audit(actor.id, "people.unsuspend", id);
+    },
+    async resetPassword(id: string) {
+      if (HTTP_ENABLED) return httpPeople.resetPassword(id);
+      await delay();
+      const actor = requireUser();
+      if (actor.role !== "super_admin") throw new ForbiddenError("Only the house principal can reset staff passwords.");
+      mutate((draft) => {
+        const row = draft.users.find((item) => item.id === id);
+        if (row) {
+          row.password = DEMO_PASSWORD;
+          row.mustChangePassword = true;
+        }
+      });
+      audit(actor.id, "people.resetPassword", id);
+      return { tempPassword: DEMO_PASSWORD, emailSent: false };
+    },
+    async removeStaff(id: string) {
+      if (HTTP_ENABLED) {
+        await httpPeople.remove(id);
+        return;
+      }
+      await delay();
+      const actor = requireUser();
+      if (actor.role !== "super_admin") throw new ForbiddenError("Only the house principal can delete staff.");
+      mutate((draft) => {
+        draft.users = draft.users.filter((item) => item.id !== id || item.role === "super_admin");
+      });
+      audit(actor.id, "people.delete", id);
     },
   },
   reviews: {

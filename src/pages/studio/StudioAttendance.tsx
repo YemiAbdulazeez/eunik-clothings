@@ -28,10 +28,10 @@ export default function StudioAttendance() {
         subtitle="Floor and house clocks. Principle and manager see everyone."
         actions={
           <div className="flex gap-2">
-            <OsButton variant="gold" onClick={() => void punch("in")}>
+            <OsButton variant="gold" onClick={() => punch("in")}>
               <Clock className="h-4 w-4" /> Clock in
             </OsButton>
-            <OsButton variant="ghost" onClick={() => void punch("out")}>
+            <OsButton variant="ghost" onClick={() => punch("out")}>
               Clock out
             </OsButton>
           </div>

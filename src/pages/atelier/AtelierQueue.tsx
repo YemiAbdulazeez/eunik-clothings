@@ -48,7 +48,7 @@ export default function AtelierQueue() {
                         <OsButton
                           variant="gold"
                           onClick={() =>
-                            void db.production
+                            db.production
                               .moveStage(item.id, next)
                               .then(() => toast.success(`Now ${statusLabel(next)}`))
                               .catch((error) => toast.error(error instanceof Error ? error.message : "Cannot advance."))

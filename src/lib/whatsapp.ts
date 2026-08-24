@@ -13,6 +13,8 @@ export function padCount(count: number): string {
 
 export async function openProductWhatsApp(product: Product): Promise<void> {
   try {
+    const { trackEvent } = await import("@/lib/track");
+    trackEvent("whatsapp_click", { sku: product.sku });
     await db.leads.createFromWhatsApp(product.id);
     window.open(orderWhatsAppUrl(product), "_blank", "noopener,noreferrer");
   } catch (error) {

@@ -1,17 +1,19 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, type LucideIcon } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, type LucideIcon } from "lucide-react";
 
 export function PageHeader({
   eyebrow,
   title,
   subtitle,
   actions,
+  onRefresh,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  onRefresh?: () => void | Promise<unknown>;
 }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -20,7 +22,14 @@ export function PageHeader({
         <h1 className="font-alt text-3xl text-ink">{title}</h1>
         {subtitle ? <p className="mt-1 max-w-2xl text-sm">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      <div className="flex flex-wrap gap-2">
+        {onRefresh ? (
+          <OsButton variant="ghost" onClick={() => onRefresh()} loadingText="Refreshing…">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </OsButton>
+        ) : null}
+        {actions}
+      </div>
     </div>
   );
 }
@@ -30,7 +39,7 @@ export function OsButton({
   variant = "ink",
   type = "button",
   disabled,
-  loading = false,
+  loading: loadingProp = false,
   loadingText,
   onClick,
   className = "",
@@ -41,9 +50,11 @@ export function OsButton({
   disabled?: boolean;
   loading?: boolean;
   loadingText?: string;
-  onClick?: () => void;
+  onClick?: () => void | Promise<unknown>;
   className?: string;
 }) {
+  const [autoBusy, setAutoBusy] = useState(false);
+  const loading = loadingProp || autoBusy;
   const look =
     variant === "gold"
       ? "bg-gold text-ink hover:bg-gold/90"
@@ -52,12 +63,26 @@ export function OsButton({
         : variant === "danger"
           ? "bg-[var(--destructive)] text-white hover:bg-red-700"
           : "bg-ink text-white hover:bg-ink/90";
+
+  async function handleClick() {
+    if (!onClick || loading) return;
+    const result = onClick();
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      setAutoBusy(true);
+      try {
+        await result;
+      } finally {
+        setAutoBusy(false);
+      }
+    }
+  }
+
   return (
     <button
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      onClick={onClick}
+      onClick={type === "submit" ? undefined : () => void handleClick()}
       className={`os-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-60 ${look} ${className}`}
     >
       {loading ? (

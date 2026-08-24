@@ -24,7 +24,7 @@ export default function StudioPayments() {
           title: `${formatNaira(item.amountKobo)} transfer to review`,
           detail: `${item.transactionNumber} · ${item.orderId.replace("order_", "#")}`,
           actionLabel: "Approve",
-          onAction: () => void db.payments.reviewTransfer(item.id, "approve").then(() => toast.success("Receipt approved.")),
+          onAction: () => db.payments.reviewTransfer(item.id, "approve").then(() => toast.success("Receipt approved.")),
         }))}
       />
       <SectionCard title="Ledger">
@@ -53,13 +53,13 @@ export default function StudioPayments() {
                   <td>
                     {item.status === "awaiting_verification" ? (
                       <div className="flex gap-2">
-                        <OsButton variant="gold" onClick={() => void db.payments.reviewTransfer(item.id, "approve").then(() => toast.success("Approved."))}>
+                        <OsButton variant="gold" onClick={() => db.payments.reviewTransfer(item.id, "approve").then(() => toast.success("Approved."))}>
                           Approve
                         </OsButton>
                         <OsButton
                           variant="ghost"
                           onClick={() =>
-                            void db.payments.reviewTransfer(item.id, "reject", "Narration mismatch").then(() => toast.message("Rejected."))
+                            db.payments.reviewTransfer(item.id, "reject", "Narration mismatch").then(() => toast.message("Rejected."))
                           }
                         >
                           Reject

@@ -36,15 +36,37 @@ const COLORS = ["#232323", "#eeb167", "#828282"];
 
 export default function StudioHome() {
   const { user } = useSession();
-  const { data: overview } = useAsync(() => db.analytics.studioOverview(), []);
-  const { data: series } = useAsync(() => db.analytics.salesSeries(), []);
-  const { data: orders } = useAsync(() => db.orders.listAll().catch(() => []), []);
-  const { data: leads } = useAsync(() => db.leads.list().catch(() => []), []);
-  const { data: fabrics } = useAsync(() => db.products.fabrics(), []);
-  const { data: appointments } = useAsync(() => db.appointments.listAll().catch(() => []), []);
-  const { data: settings } = useAsync(() => db.settings.get(), []);
-  const { data: requests } = useAsync(() => db.customDesigns.listAll().catch(() => []), []);
-  const { data: board } = useAsync(() => db.production.listBoard().catch(() => []), []);
+  const overviewQ = useAsync(() => db.analytics.studioOverview(), []);
+  const seriesQ = useAsync(() => db.analytics.salesSeries(), []);
+  const ordersQ = useAsync(() => db.orders.listAll().catch(() => []), []);
+  const leadsQ = useAsync(() => db.leads.list().catch(() => []), []);
+  const fabricsQ = useAsync(() => db.products.fabrics(), []);
+  const appointmentsQ = useAsync(() => db.appointments.listAll().catch(() => []), []);
+  const settingsQ = useAsync(() => db.settings.get(), []);
+  const requestsQ = useAsync(() => db.customDesigns.listAll().catch(() => []), []);
+  const boardQ = useAsync(() => db.production.listBoard().catch(() => []), []);
+  const overview = overviewQ.data;
+  const series = seriesQ.data;
+  const orders = ordersQ.data;
+  const leads = leadsQ.data;
+  const fabrics = fabricsQ.data;
+  const appointments = appointmentsQ.data;
+  const settings = settingsQ.data;
+  const requests = requestsQ.data;
+  const board = boardQ.data;
+  async function refresh() {
+    await Promise.all([
+      overviewQ.reload(),
+      seriesQ.reload(),
+      ordersQ.reload(),
+      leadsQ.reload(),
+      fabricsQ.reload(),
+      appointmentsQ.reload(),
+      settingsQ.reload(),
+      requestsQ.reload(),
+      boardQ.reload(),
+    ]);
+  }
   const role = user?.role;
   const canAnalytics = user ? canSeeSection(user, "analytics") : false;
   const canPayments = user ? canSeeSection(user, "payments") : false;
@@ -90,7 +112,7 @@ export default function StudioHome() {
       detail: "Unclaimed — desk should own this click.",
       actionLabel: "Claim",
       onAction: () =>
-        void db.leads.claim(lead.id, { openTicket: true }).then(({ orderNumber }) =>
+        db.leads.claim(lead.id, { openTicket: true }).then(({ orderNumber }) =>
           toast.success(orderNumber ? `Claimed — order #${orderNumber} opened.` : "Lead claimed."),
         ),
     })),
@@ -139,6 +161,7 @@ export default function StudioHome() {
                   ? "Magazine, events, and products."
                   : "Desk, money, then the floor."
         }
+        onRefresh={() => refresh()}
         actions={
           canCustom ? (
             <Link to="/studio/custom" className="os-pill bg-gold text-ink">

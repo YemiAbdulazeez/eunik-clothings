@@ -30,7 +30,7 @@ export default function AtelierAppointments() {
               <OsButton
                 className="mt-3"
                 onClick={() =>
-                  void db.appointments
+                  db.appointments
                     .setStatus(row.id, "confirmed")
                     .then(() => toast.success("Confirmed."))
                     .catch((error) => toast.error(error instanceof Error ? error.message : "Could not confirm."))

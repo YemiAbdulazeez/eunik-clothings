@@ -33,6 +33,10 @@ export default function CookieBanner() {
             localStorage.setItem("eunik_vid", `v_${crypto.randomUUID().replace(/-/g, "")}`);
           }
           setVisible(false);
+          // First measurement right after consent
+          void import("@/lib/track").then(({ trackPageView }) => {
+            trackPageView(window.location.pathname);
+          });
         }}
       >
         Allow cookies

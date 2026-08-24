@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -31,6 +32,7 @@ import MustChangePasswordGate from "@/components/MustChangePasswordGate";
 import { landingPath } from "@/db/session";
 import { canSeeSection, canUseArea, sectionForPath } from "@/lib/rbac";
 import type { PublicUser as HouseUser } from "@/db/types";
+import { trackPageView } from "@/lib/track";
 
 const accountItems = [
   { to: "/account", label: "Home", icon: LayoutDashboard },
@@ -93,6 +95,14 @@ function RestrictedOutlet({ user }: { user: HouseUser }) {
   return <Outlet />;
 }
 
+function AccountPageTracker() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
+  return null;
+}
+
 export function AccountGate() {
   const { user, loading } = useSession();
   if (loading) return <Splash />;
@@ -108,6 +118,7 @@ export function AccountGate() {
           searchPlaceholder="Search orders, quotes, bookings…"
           profileTo="/account/profile"
         >
+          <AccountPageTracker />
           <Outlet />
         </OsShell>
       </MustChangePasswordGate>

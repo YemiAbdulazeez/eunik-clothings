@@ -7,8 +7,9 @@ import { useAsync } from "@/hooks/useAsync";
 import { slugify } from "@/lib/format";
 
 export default function StudioEvents() {
-  const { data: events } = useAsync(() => db.content.events(), []);
+  const { data: events, reload } = useAsync(() => db.content.events(), []);
   const [editing, setEditing] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const current = (events ?? []).find((item) => item.id === editing);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -20,18 +21,24 @@ export default function StudioEvents() {
       toast.error("Upload an event image.");
       return;
     }
-    await db.content.saveEvent({
-      id: current?.id,
-      slug: current?.slug ?? slugify(name),
-      name,
-      date: String(data.get("date")),
-      location: String(data.get("location")),
-      image,
-      description: String(data.get("description")),
-    });
-    toast.success(current ? "Event updated." : "Event listed.");
-    setEditing(null);
-    event.currentTarget.reset();
+    setBusy(true);
+    try {
+      await db.content.saveEvent({
+        id: current?.id,
+        slug: current?.slug ?? slugify(name),
+        name,
+        date: String(data.get("date")),
+        location: String(data.get("location")),
+        image,
+        description: String(data.get("description")),
+      });
+      toast.success(current ? "Event updated." : "Event listed.");
+      setEditing(null);
+      event.currentTarget.reset();
+      await reload();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -55,7 +62,7 @@ export default function StudioEvents() {
                     <button
                       type="button"
                       className="underline"
-                      onClick={() => void db.content.removeEvent(item.id).then(() => toast.message("Removed."))}
+                      onClick={() => db.content.removeEvent(item.id).then(() => toast.message("Removed."))}
                     >
                       Delete
                     </button>
@@ -80,7 +87,9 @@ export default function StudioEvents() {
             <Field label="Description">
               <textarea name="description" rows={3} defaultValue={current?.description} className={inputClass} />
             </Field>
-            <OsButton type="submit">Save event</OsButton>
+            <OsButton type="submit" loading={busy} loadingText="Saving…">
+              Save event
+            </OsButton>
           </form>
         </SectionCard>
       </div>

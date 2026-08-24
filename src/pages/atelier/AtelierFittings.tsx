@@ -15,7 +15,7 @@ export default function AtelierFittings() {
             <p className="text-ink">{item.date}</p>
             <p className="text-sm">{item.notes}</p>
             {item.status !== "done" ? (
-              <OsButton className="mt-4" variant="gold" onClick={() => void db.fittings.update(item.id, { status: "done" }).then(() => toast.success("Fitting recorded."))}>
+              <OsButton className="mt-4" variant="gold" onClick={() => db.fittings.update(item.id, { status: "done" }).then(() => toast.success("Fitting recorded."))}>
                 Mark done
               </OsButton>
             ) : null}

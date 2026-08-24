@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageHero from "@/components/PageHero";
@@ -12,6 +12,7 @@ import { formatNaira } from "@/lib/money";
 import { openPaystackCheckout } from "@/lib/paystack";
 import { HTTP_ENABLED, httpOrders, httpPayments } from "@/api/http";
 import { emitCartChange } from "@/lib/cartEvents";
+import { trackEvent } from "@/lib/track";
 
 export default function Checkout() {
   const { cart, refresh: refreshCart } = useCart();
@@ -31,6 +32,10 @@ export default function Checkout() {
   const merchandise = totals.payable + (shipping ?? 0);
   // MTM: show deposit due now (matches what Paystack/transfer will charge after place-order)
   const amount = hasMtm ? Math.ceil((merchandise * depositPercent) / 100) : merchandise;
+
+  useEffect(() => {
+    if (cart?.lines.length) trackEvent("begin_checkout", { path: "/checkout" });
+  }, [cart?.lines.length]);
 
   async function pay(choice: PayChoice) {
     if (!cart?.lines.length) {

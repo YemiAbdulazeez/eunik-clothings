@@ -263,7 +263,8 @@ export const httpOrders = {
     return data.order;
   },
   async updateStatus(id: string, status: string) {
-    await api(`/orders/${id}/status`, { method: "PATCH", body: { status } });
+    const data = await api<{ order?: unknown }>(`/orders/${id}/status`, { method: "PATCH", body: { status } });
+    return data.order;
   },
 };
 
@@ -376,8 +377,40 @@ export const httpPeople = {
     });
     return data.customer;
   },
-  async hire(payload: { email: string; name: string; firstName: string; phone: string; role: string; department?: string; jobTitle?: string }) {
-    return api<{ id: string }>("/studio/people/hire", { method: "POST", body: payload });
+  async hire(payload: {
+    email: string;
+    name: string;
+    firstName: string;
+    phone: string;
+    role: string;
+    department?: string;
+    jobTitle?: string;
+  }) {
+    return api<{ id: string; tempPassword: string; emailSent: boolean }>("/studio/people/hire", {
+      method: "POST",
+      body: payload,
+    });
+  },
+  async updateStaff(id: string, patch: { role?: string; department?: string; jobTitle?: string }) {
+    const data = await api<{ staff: unknown }>(`/studio/people/staff/${id}`, {
+      method: "PATCH",
+      body: patch,
+    });
+    return data.staff;
+  },
+  async suspend(id: string) {
+    await api(`/studio/people/staff/${id}/suspend`, { method: "POST" });
+  },
+  async unsuspend(id: string) {
+    await api(`/studio/people/staff/${id}/unsuspend`, { method: "POST" });
+  },
+  async resetPassword(id: string) {
+    return api<{ tempPassword: string; emailSent: boolean }>(`/studio/people/staff/${id}/reset-password`, {
+      method: "POST",
+    });
+  },
+  async remove(id: string) {
+    await api(`/studio/people/staff/${id}`, { method: "DELETE" });
   },
   async setNav(userId: string, sections: string[]) {
     await api(`/studio/staff/${userId}/nav`, { method: "PATCH", body: { sections } });

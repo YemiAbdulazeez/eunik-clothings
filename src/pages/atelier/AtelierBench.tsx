@@ -12,13 +12,21 @@ import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AtelierBench() {
   const { user } = useSession();
-  const { data: board, reload } = useAsync(() => db.production.listBoard(), []);
-  const { data: fittings } = useAsync(() => db.fittings.list(), []);
-  const { data: settings } = useAsync(() => db.settings.get(), []);
+  const boardQ = useAsync(() => db.production.listBoard(), []);
+  const fittingsQ = useAsync(() => db.fittings.list(), []);
+  const settingsQ = useAsync(() => db.settings.get(), []);
+  const board = boardQ.data;
+  const fittings = fittingsQ.data;
+  const settings = settingsQ.data;
+  const reload = boardQ.reload;
   const [clocked, setClocked] = useState(() => localStorage.getItem("eunik-clock") === "in");
   const assigned = board ?? [];
   const today = settings?.demoToday ?? new Date().toISOString().slice(0, 10);
   const overdue = assigned.filter((item) => item.dueDate < today);
+
+  async function refresh() {
+    await Promise.all([boardQ.reload(), fittingsQ.reload(), settingsQ.reload()]);
+  }
 
   const tiles = [
     { to: "/atelier/queue", label: "Queue", hint: "Orders on the floor", icon: ClipboardList, section: "queue" as const },
@@ -33,7 +41,7 @@ export default function AtelierBench() {
     const next = !clocked;
     setClocked(next);
     localStorage.setItem("eunik-clock", next ? "in" : "out");
-    void db.attendance.clock(next ? "in" : "out").then(() => toast.success(next ? "Clocked in on the floor." : "Clocked out."));
+    return db.attendance.clock(next ? "in" : "out").then(() => toast.success(next ? "Clocked in on the floor." : "Clocked out."));
   }
 
   async function advance(id: string, stage: ProductionStage) {
@@ -44,7 +52,7 @@ export default function AtelierBench() {
       return;
     }
     await db.production.moveStage(id, next);
-    reload();
+    await reload();
     toast.success(`Moved to ${statusLabel(next)}`);
   }
 
@@ -54,6 +62,7 @@ export default function AtelierBench() {
         eyebrow="Floor"
         title={`On your bench, ${user?.firstName}.`}
         subtitle="Advance only orders on your bench. No money screens here."
+        onRefresh={() => refresh()}
         actions={
           <OsButton variant={clocked ? "ghost" : "gold"} onClick={clock}>
             {clocked ? "Clock out" : "Clock in"}
@@ -97,7 +106,7 @@ export default function AtelierBench() {
                   </p>
                   <StatusBadge label={statusLabel(item.stage)} tone={statusTone(item.stage)} />
                   {next ? (
-                    <OsButton className="mt-3" variant="gold" onClick={() => void advance(item.id, item.stage)}>
+                    <OsButton className="mt-3" variant="gold" onClick={() => advance(item.id, item.stage)}>
                       Advance to {statusLabel(next)}
                     </OsButton>
                   ) : null}

@@ -1,7 +1,7 @@
 import { Fragment, type FormEvent, useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db, type NavSection, type PublicUser, type Role } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -57,7 +57,7 @@ function NavTickGrid({
   );
 }
 
-function StaffAccessEditor({ person }: { person: PublicUser }) {
+function StaffAccessEditor({ person, onDone }: { person: PublicUser; onDone: () => void }) {
   const [role, setRole] = useState<Role>(person.role);
   const [nav, setNav] = useState<NavSection[]>(assignedNav(person));
   const locked = person.role === "super_admin";
@@ -75,6 +75,7 @@ function StaffAccessEditor({ person }: { person: PublicUser }) {
         await db.people.setNav(person.id, nav);
       }
       toast.success("Access saved.");
+      onDone();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save access.");
     }
@@ -107,16 +108,72 @@ function StaffAccessEditor({ person }: { person: PublicUser }) {
       <p className="text-sm text-muted">
         Lands on <span className="font-mono text-ink">{previewLandingPath(role, nav)}</span> · {navAreaLabel({ role, navSections: nav })}
       </p>
-      <OsButton onClick={() => void save()}>Save access</OsButton>
+      <OsButton onClick={() => save()}>Save access</OsButton>
+    </div>
+  );
+}
+
+function StaffAdminActions({ person, onDone }: { person: PublicUser; onDone: () => void }) {
+  const suspended = Boolean(person.suspendedAt);
+
+  async function suspend() {
+    if (!window.confirm(`Suspend ${person.name}? They will not be able to sign in.`)) return;
+    await db.people.suspend(person.id);
+    toast.success("Staff suspended.");
+    onDone();
+  }
+
+  async function restore() {
+    await db.people.unsuspend(person.id);
+    toast.success("Staff restored.");
+    onDone();
+  }
+
+  async function resetPassword() {
+    if (!window.confirm(`Reset password for ${person.email}?`)) return;
+    const result = await db.people.resetPassword(person.id);
+    if (result.emailSent) {
+      toast.success("Temporary password emailed. They must change it on next sign-in.");
+    } else {
+      toast.success(`Temp password: ${result.tempPassword} — copy and share securely.`);
+    }
+    onDone();
+  }
+
+  async function remove() {
+    if (!window.confirm(`Permanently delete ${person.name}? This cannot be undone.`)) return;
+    await db.people.removeStaff(person.id);
+    toast.success("Staff removed from the house file.");
+    onDone();
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+      {suspended ? (
+        <OsButton variant="gold" onClick={() => restore()}>
+          Restore access
+        </OsButton>
+      ) : (
+        <OsButton variant="ghost" onClick={() => suspend()}>
+          Suspend
+        </OsButton>
+      )}
+      <OsButton variant="ghost" onClick={() => resetPassword()}>
+        Reset password
+      </OsButton>
+      <OsButton variant="danger" onClick={() => remove()}>
+        Delete
+      </OsButton>
     </div>
   );
 }
 
 export default function StudioPeople() {
   const { user } = useSession();
-  const { data: staff } = useAsync(() => db.people.staff(), []);
+  const { data: staff, reload } = useAsync(() => db.people.staff(), []);
   const principal = user?.role === "super_admin";
   const [open, setOpen] = useState(false);
+  const [hireBusy, setHireBusy] = useState(false);
   const [hireRole, setHireRole] = useState<Role>("desk");
   const [hireNav, setHireNav] = useState<NavSection[]>(() => defaultNav("desk"));
   const [editing, setEditing] = useState<string | null>(null);
@@ -126,14 +183,16 @@ export default function StudioPeople() {
   async function hire(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!principal) return;
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const check = validateStaffNav(hireRole, hireNav);
     if (!check.ok) {
       toast.error(check.message);
       return;
     }
+    setHireBusy(true);
     try {
-      await db.people.createStaff({
+      const hired = await db.people.createStaff({
         email: String(data.get("email")),
         name: `${data.get("firstName")} ${data.get("lastName")}`.trim(),
         firstName: String(data.get("firstName")),
@@ -146,13 +205,24 @@ export default function StudioPeople() {
         emergencyPhone: String(data.get("emergencyPhone")),
         navSections: hireNav.includes("profile") ? hireNav : [...hireNav, "profile"],
       });
-      toast.success("Staff book opened. Temporary password is the house demo password.");
-      event.currentTarget.reset();
+      const temp = (hired as PublicUser & { tempPassword?: string; emailSent?: boolean }).tempPassword;
+      const emailed = (hired as PublicUser & { emailSent?: boolean }).emailSent;
+      if (emailed) {
+        toast.success("Staff hired. Temporary password emailed — they must change it on first sign-in.");
+      } else if (temp) {
+        toast.success(`Staff hired. Temp password: ${temp} — share securely; they must change it on first sign-in.`);
+      } else {
+        toast.success("Staff hired.");
+      }
+      form.reset();
       setHireRole("desk");
       setHireNav(defaultNav("desk"));
       setOpen(false);
+      await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not hire.");
+    } finally {
+      setHireBusy(false);
     }
   }
 
@@ -161,6 +231,7 @@ export default function StudioPeople() {
       <PageHeader
         title="Staff"
         subtitle="Hire someone, pick Desk / Finance / Design / Floor, and choose what they can open."
+        onRefresh={() => reload()}
         actions={
           principal ? (
             <OsButton variant="gold" onClick={() => setOpen(true)}>
@@ -224,8 +295,10 @@ export default function StudioPeople() {
               {navAreaLabel({ role: hireRole, navSections: hireNav })}
             </p>
             <div className="flex gap-2 md:col-span-2">
-              <OsButton type="submit">Save staff</OsButton>
-              <OsButton variant="ghost" onClick={() => setOpen(false)}>
+              <OsButton type="submit" loading={hireBusy} loadingText="Hiring…">
+                Save staff
+              </OsButton>
+              <OsButton variant="ghost" onClick={() => setOpen(false)} disabled={hireBusy}>
                 Cancel
               </OsButton>
             </div>
@@ -241,6 +314,7 @@ export default function StudioPeople() {
                 <th>Role</th>
                 <th>Department</th>
                 <th>Phone</th>
+                <th>Status</th>
                 <th>What they can open</th>
                 {principal ? <th /> : null}
               </tr>
@@ -253,6 +327,15 @@ export default function StudioPeople() {
                     <td className="capitalize">{roleLabel(person.role)}</td>
                     <td>{person.department ?? "—"}</td>
                     <td>{person.phone}</td>
+                    <td>
+                      {person.suspendedAt ? (
+                        <StatusBadge label="Suspended" tone="warn" />
+                      ) : person.mustChangePassword ? (
+                        <StatusBadge label="Temp password" tone="gold" />
+                      ) : (
+                        <StatusBadge label="Active" tone="ok" />
+                      )}
+                    </td>
                     <td>{person.role === "super_admin" ? "All" : assignedNav(person).length}</td>
                     {principal ? (
                       <td>
@@ -264,7 +347,7 @@ export default function StudioPeople() {
                             className="underline"
                             onClick={() => setEditing((id) => (id === person.id ? null : person.id))}
                           >
-                            {editing === person.id ? "Close" : "Assign"}
+                            {editing === person.id ? "Close" : "Manage"}
                           </button>
                         )}
                       </td>
@@ -272,8 +355,21 @@ export default function StudioPeople() {
                   </tr>
                   {principal && editing === person.id ? (
                     <tr className="border-b border-line/70 bg-paper/60">
-                      <td colSpan={6} className="px-3">
-                        <StaffAccessEditor person={person} />
+                      <td colSpan={7} className="px-3 pb-3">
+                        <StaffAccessEditor
+                          person={person}
+                          onDone={() => {
+                            setEditing(null);
+                            void reload();
+                          }}
+                        />
+                        <StaffAdminActions
+                          person={person}
+                          onDone={() => {
+                            setEditing(null);
+                            void reload();
+                          }}
+                        />
                       </td>
                     </tr>
                   ) : null}

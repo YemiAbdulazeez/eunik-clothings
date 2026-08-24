@@ -1,16 +1,18 @@
 import { Link, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import PageHero from "@/components/PageHero";
 import { AsyncGuard } from "@/components/AsyncState";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
 import { formatNaira } from "@/lib/money";
+import { trackEvent } from "@/lib/track";
 
 export default function ThankYou() {
   const { id = "" } = useParams();
   const { user } = useSession();
   const { data: order, loading, error } = useAsync(() => db.orders.get(id), [id]);
+  const tracked = useRef(false);
   const welcome = useMemo(() => {
     try {
       const raw = sessionStorage.getItem("eunik-welcome");
@@ -19,6 +21,12 @@ export default function ThankYou() {
       return null;
     }
   }, []);
+
+  useEffect(() => {
+    if (!order || tracked.current) return;
+    tracked.current = true;
+    trackEvent("purchase", { path: `/orders/thank-you/${order.id}`, sku: order.sku });
+  }, [order]);
 
   return (
     <>

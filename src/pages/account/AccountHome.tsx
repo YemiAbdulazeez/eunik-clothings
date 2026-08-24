@@ -37,21 +37,41 @@ const RING: Record<string, number> = {
 
 export default function AccountHome() {
   const { user } = useSession();
-  const { data: orders } = useAsync(() => db.orders.listMine(), []);
-  const { data: quotes } = useAsync(() => db.quotations.listMine(), []);
-  const { data: appointments } = useAsync(() => db.appointments.listMine(), []);
-  const { data: wishlist } = useAsync(() => db.wishlist.list(), []);
-  const { data: notes } = useAsync(() => db.notifications.listMine(), []);
-  const { data: featured } = useAsync(() => db.products.featured(), []);
-  const { data: journal } = useAsync(() => db.content.journal(), []);
+  const ordersQ = useAsync(() => db.orders.listMine(), []);
+  const quotesQ = useAsync(() => db.quotations.listMine(), []);
+  const appointmentsQ = useAsync(() => db.appointments.listMine(), []);
+  const wishlistQ = useAsync(() => db.wishlist.list(), []);
+  const notesQ = useAsync(() => db.notifications.listMine(), []);
+  const featuredQ = useAsync(() => db.products.featured(), []);
+  const journalQ = useAsync(() => db.content.journal(), []);
+  const orders = ordersQ.data;
+  const quotes = quotesQ.data;
+  const appointments = appointmentsQ.data;
+  const wishlist = wishlistQ.data;
+  const notes = notesQ.data;
+  const featured = featuredQ.data;
+  const journal = journalQ.data;
   const main =
     orders?.find((item) => item.status === "production") ??
     orders?.find((item) => item.paidKobo < item.totalKobo && item.status !== "cancelled") ??
     orders?.[0];
-  const { data: prod } = useAsync(
+  const prodQ = useAsync(
     () => (main ? db.production.getByOrder(main.id) : Promise.resolve(null)),
     [main?.id],
   );
+  const prod = prodQ.data;
+  async function refresh() {
+    await Promise.all([
+      ordersQ.reload(),
+      quotesQ.reload(),
+      appointmentsQ.reload(),
+      wishlistQ.reload(),
+      notesQ.reload(),
+      featuredQ.reload(),
+      journalQ.reload(),
+      prodQ.reload(),
+    ]);
+  }
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const waitingQuote = quotes?.find((item) => item.status === "sent");
@@ -119,6 +139,7 @@ export default function AccountHome() {
         eyebrow="My account"
         title={`${greet}, ${user?.firstName}.`}
         subtitle="Orders, quotes, and bookings — all in one place."
+        onRefresh={() => refresh()}
         actions={
           <>
             <Link to="/account/custom" className="os-pill bg-gold text-ink">

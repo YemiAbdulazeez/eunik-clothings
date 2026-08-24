@@ -13,16 +13,40 @@ import { canDeleteProducts } from "@/lib/rbac";
 
 export default function StudioProducts() {
   const { id } = useParams();
-  const { data: products, loading } = useAsync(() => db.products.listAll().catch(() => db.products.list()), []);
+  const { data: products, loading: listLoading } = useAsync(
+    () => db.products.listAll().catch(() => db.products.list()),
+    [],
+  );
   const { data: categories } = useAsync(() => db.categories.list(), []);
-  const editing = id && id !== "new" ? (products ?? []).find((item) => item.id === id) : null;
+  const isNew = id === "new";
   const isForm = Boolean(id);
+  const { data: fetched, loading: fetchLoading } = useAsync(
+    () =>
+      id && !isNew
+        ? db.products.getById(id).catch(() => null)
+        : Promise.resolve(null),
+    [id, isNew],
+  );
+
+  const fromList =
+    id && !isNew
+      ? (products ?? []).find((item) => {
+          const key = id.trim().toLowerCase();
+          return (
+            item.id.trim().toLowerCase() === key ||
+            item.sku.trim().toLowerCase() === key ||
+            item.slug.trim().toLowerCase() === key
+          );
+        })
+      : null;
+  const editing = fetched ?? fromList ?? null;
+  const loading = listLoading || (Boolean(id) && !isNew && fetchLoading);
 
   if (isForm) {
-    if (id !== "new" && loading) {
+    if (!isNew && loading) {
       return <p className="py-10 text-center text-sm text-muted">Opening look…</p>;
     }
-    if (id !== "new" && !editing) {
+    if (!isNew && !editing) {
       return (
         <div className="space-y-4">
           <p className="text-sm text-muted">That look was not found on the rail.</p>
@@ -32,7 +56,7 @@ export default function StudioProducts() {
         </div>
       );
     }
-    return <ProductForm key={id} existing={editing ?? null} isNew={id === "new"} categories={categories ?? []} />;
+    return <ProductForm key={editing?.id ?? id} existing={editing ?? null} isNew={isNew} categories={categories ?? []} />;
   }
 
   return (
@@ -51,7 +75,7 @@ export default function StudioProducts() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {(products ?? []).map((item) => (
-            <Link key={item.id} to={`/studio/products/${item.id}`}>
+            <Link key={item.id} to={`/studio/products/${encodeURIComponent(item.id.trim())}`}>
               <SectionCard>
                 <img src={item.image} alt="" className="mb-3 h-40 w-full rounded-xl object-cover" />
                 <p className="os-label">{item.sku}</p>
@@ -221,11 +245,11 @@ function ProductForm({
             </p>
           </SectionCard>
           <div className="flex flex-wrap gap-2">
-            <OsButton type="submit" disabled={busy}>
-              {existing ? "Save look" : "Add look"}
-            </OsButton>
+          <OsButton type="submit" disabled={busy} loading={busy}>
+            {existing ? "Save look" : "Add look"}
+          </OsButton>
             {existing && canDelete ? (
-              <OsButton variant="danger" onClick={() => void remove()}>
+              <OsButton variant="danger" onClick={() => remove()}>
                 Delete
               </OsButton>
             ) : null}

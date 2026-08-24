@@ -12,6 +12,7 @@ export default function StudioCollections() {
   const { data: counts } = useAsync(() => db.categories.counts(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState(false);
   const editing = (categories ?? []).find((item) => item.id === editingId) ?? null;
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -24,6 +25,7 @@ export default function StudioCollections() {
       toast.error("Upload a collection image.");
       return;
     }
+    setBusy(true);
     try {
       if (editing) {
         await db.categories.update(editing.id, { name, tagline, image, homeTileImage: image });
@@ -42,6 +44,8 @@ export default function StudioCollections() {
       event.currentTarget.reset();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save collection.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -80,7 +84,7 @@ export default function StudioCollections() {
             <p className="flex items-center gap-2 text-sm">
               <Layers className="h-4 w-4" /> {counts?.[item.slug] ?? 0} looks · {item.tagline}
             </p>
-            <OsButton className="mt-3" variant="ghost" onClick={() => void remove(item.id)}>
+            <OsButton className="mt-3" variant="ghost" onClick={() => remove(item.id)}>
               Delete
             </OsButton>
           </SectionCard>
@@ -104,7 +108,9 @@ export default function StudioCollections() {
               <ImageUpload name="image" label="Cover image" value={editing?.image} folder="looks" />
             </div>
             <div className="flex gap-2">
-              <OsButton type="submit">Save</OsButton>
+              <OsButton type="submit" loading={busy} loadingText="Saving…">
+                Save
+              </OsButton>
               <OsButton
                 variant="ghost"
                 onClick={() => {

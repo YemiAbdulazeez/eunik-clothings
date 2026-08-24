@@ -39,7 +39,7 @@ export default function MustChangePasswordGate({ children }: { children: ReactNo
           <Field label="New password">
             <input name="next" type="password" required minLength={8} className={inputClass} />
           </Field>
-          <OsButton type="submit" disabled={busy} className="w-full">
+          <OsButton type="submit" disabled={busy} loading={busy} className="w-full">
             Save and continue
           </OsButton>
         </form>

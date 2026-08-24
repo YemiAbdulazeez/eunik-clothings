@@ -43,26 +43,32 @@ export default function StudioContent() {
 }
 
 function HomeForm({ home }: { home: Awaited<ReturnType<typeof db.content.homepage>> }) {
+  const [busy, setBusy] = useState(false);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    await db.content.updateHomepage({
-      magazineTitle: String(data.get("magazineTitle") ?? ""),
-      newArrivalTitle: String(data.get("newArrivalTitle") ?? ""),
-      newArrivalEyebrow: String(data.get("newArrivalEyebrow") ?? ""),
-      aboutTrustLine: String(data.get("aboutTrustLine") ?? ""),
-      promoCode: String(data.get("promoCode") ?? ""),
-      showMagazine: data.get("showMagazine") === "on",
-      showPromo: data.get("showPromo") === "on",
-      showArrivals: data.get("showArrivals") === "on",
-      hero: [0, 1, 2].map((index) => ({
-        title: String(data.get(`heroTitle${index}`) ?? ""),
-        subtitle: String(data.get(`heroSubtitle${index}`) ?? ""),
-        image: String(data.get(`heroImage${index}`) ?? ""),
-        to: String(data.get(`heroTo${index}`) ?? ""),
-      })),
-    });
-    toast.success("Homepage saved. Open Home to see it.");
+    setBusy(true);
+    try {
+      await db.content.updateHomepage({
+        magazineTitle: String(data.get("magazineTitle") ?? ""),
+        newArrivalTitle: String(data.get("newArrivalTitle") ?? ""),
+        newArrivalEyebrow: String(data.get("newArrivalEyebrow") ?? ""),
+        aboutTrustLine: String(data.get("aboutTrustLine") ?? ""),
+        promoCode: String(data.get("promoCode") ?? ""),
+        showMagazine: data.get("showMagazine") === "on",
+        showPromo: data.get("showPromo") === "on",
+        showArrivals: data.get("showArrivals") === "on",
+        hero: [0, 1, 2].map((index) => ({
+          title: String(data.get(`heroTitle${index}`) ?? ""),
+          subtitle: String(data.get(`heroSubtitle${index}`) ?? ""),
+          image: String(data.get(`heroImage${index}`) ?? ""),
+          to: String(data.get(`heroTo${index}`) ?? ""),
+        })),
+      });
+      toast.success("Homepage saved. Open Home to see it.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const heroSlides = [0, 1, 2].map((index) => home.hero[index] ?? { title: "", subtitle: "", image: "", to: "" });
@@ -111,27 +117,35 @@ function HomeForm({ home }: { home: Awaited<ReturnType<typeof db.content.homepag
           ))}
         </div>
       </SectionCard>
-      <OsButton type="submit">Save homepage</OsButton>
+      <OsButton type="submit" loading={busy} loadingText="Saving…">
+        Save homepage
+      </OsButton>
     </form>
   );
 }
 
 function JournalManager({ posts }: { posts: Awaited<ReturnType<typeof db.content.journal>> }) {
+  const [busy, setBusy] = useState(false);
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const title = String(data.get("title"));
-    await db.content.saveJournal({
-      slug: slugify(title),
-      title,
-      excerpt: String(data.get("excerpt")),
-      image: String(data.get("image")),
-      author: "Olamide Olasedidun",
-      date: new Date().toISOString().slice(0, 10),
-      content: String(data.get("content")),
-    });
-    toast.success("Story published.");
-    event.currentTarget.reset();
+    setBusy(true);
+    try {
+      await db.content.saveJournal({
+        slug: slugify(title),
+        title,
+        excerpt: String(data.get("excerpt")),
+        image: String(data.get("image")),
+        author: "Olamide Olasedidun",
+        date: new Date().toISOString().slice(0, 10),
+        content: String(data.get("content")),
+      });
+      toast.success("Story published.");
+      event.currentTarget.reset();
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -153,7 +167,9 @@ function JournalManager({ posts }: { posts: Awaited<ReturnType<typeof db.content
           <ImageUpload name="image" label="Cover image" value="/images/sen3007.jpg" folder="looks" />
           <input name="excerpt" placeholder="Excerpt" className={inputClass} />
           <textarea name="content" rows={4} placeholder="Body" className={inputClass} />
-          <OsButton type="submit">Publish</OsButton>
+          <OsButton type="submit" loading={busy} loadingText="Publishing…">
+            Publish
+          </OsButton>
         </form>
       </SectionCard>
     </div>
@@ -161,18 +177,24 @@ function JournalManager({ posts }: { posts: Awaited<ReturnType<typeof db.content
 }
 
 function LookbookManager({ items }: { items: Awaited<ReturnType<typeof db.content.lookbook>> }) {
+  const [busy, setBusy] = useState(false);
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    await db.content.saveLookbook({
-      title: String(data.get("title")),
-      image: String(data.get("image")),
-      collection: String(data.get("collection")),
-      productId: String(data.get("productId") || "") || undefined,
-      notes: String(data.get("notes")),
-    });
-    toast.success("Lookbook tile saved.");
-    event.currentTarget.reset();
+    setBusy(true);
+    try {
+      await db.content.saveLookbook({
+        title: String(data.get("title")),
+        image: String(data.get("image")),
+        collection: String(data.get("collection")),
+        productId: String(data.get("productId") || "") || undefined,
+        notes: String(data.get("notes")),
+      });
+      toast.success("Lookbook tile saved.");
+      event.currentTarget.reset();
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -202,7 +224,9 @@ function LookbookManager({ items }: { items: Awaited<ReturnType<typeof db.conten
           </select>
           <input name="productId" placeholder="product id e.g. ara5003" className={inputClass} />
           <input name="notes" placeholder="Notes" className={inputClass} />
-          <OsButton type="submit">Save tile</OsButton>
+          <OsButton type="submit" loading={busy} loadingText="Saving…">
+            Save tile
+          </OsButton>
         </form>
       </SectionCard>
     </div>

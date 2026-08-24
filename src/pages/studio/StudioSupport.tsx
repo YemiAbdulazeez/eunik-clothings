@@ -39,7 +39,7 @@ export default function StudioSupport() {
             <div className="mt-3 flex gap-2">
               <OsButton
                 onClick={() =>
-                  void db.tickets.reply(item.id, reply[item.id] ?? "").then(() => {
+                  db.tickets.reply(item.id, reply[item.id] ?? "").then(() => {
                     toast.success("Replied.");
                     setReply((current) => ({ ...current, [item.id]: "" }));
                   })
@@ -48,7 +48,7 @@ export default function StudioSupport() {
                 Send
               </OsButton>
               {item.status === "open" ? (
-                <OsButton variant="ghost" onClick={() => void db.tickets.setStatus(item.id, "closed")}>
+                <OsButton variant="ghost" onClick={() => db.tickets.setStatus(item.id, "closed")}>
                   Close
                 </OsButton>
               ) : null}
@@ -69,10 +69,10 @@ export default function StudioSupport() {
               </div>
               {item.status === "pending" ? (
                 <div className="flex gap-2">
-                  <OsButton variant="gold" onClick={() => void db.reviews.moderate(item.id, "approved")}>
+                  <OsButton variant="gold" onClick={() => db.reviews.moderate(item.id, "approved")}>
                     Publish
                   </OsButton>
-                  <OsButton variant="ghost" onClick={() => void db.reviews.moderate(item.id, "rejected")}>
+                  <OsButton variant="ghost" onClick={() => db.reviews.moderate(item.id, "rejected")}>
                     Hold
                   </OsButton>
                 </div>

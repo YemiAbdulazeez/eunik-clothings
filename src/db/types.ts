@@ -95,6 +95,7 @@ export type User = {
   preferredFit?: string;
   notes?: string;
   mustChangePassword?: boolean;
+  suspendedAt?: string | null;
   navSections?: NavSection[];
 };
 
@@ -239,6 +240,7 @@ export type Order = {
   address?: string;
   createdAt: string;
   measurementSnapshot?: Record<string, number>;
+  items?: OrderItem[];
 };
 
 export type OrderItem = {

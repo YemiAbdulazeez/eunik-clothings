@@ -9,6 +9,7 @@ import { shopHref } from "@/lib/osNav";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/context/CartProvider";
 import { canShop, isHouseStaff } from "@/lib/rbac";
+import { trackEvent } from "@/lib/track";
 
 export default function ProductCard({ product }: { product: Product }) {
   const location = useLocation();
@@ -35,6 +36,7 @@ export default function ProductCard({ product }: { product: Product }) {
       setBusy(true);
       await db.cart.add({ productId: product.id, kind: "rtw", qty: 1 });
       await refresh();
+      trackEvent("add_to_bag", { sku: product.sku, path: href });
       toast.success("Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");

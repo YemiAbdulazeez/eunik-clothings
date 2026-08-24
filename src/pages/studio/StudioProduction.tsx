@@ -64,7 +64,7 @@ export default function StudioProduction() {
                       <ProgressBar value={((ALL_STAGES.indexOf(item.stage) + 1) / ALL_STAGES.length) * 100} gold />
                     </div>
                     {canAdvance ? (
-                      <OsButton className="mt-3 w-full" variant="gold" onClick={() => void advance(item.id, item.stage)}>
+                      <OsButton className="mt-3 w-full" variant="gold" onClick={() => advance(item.id, item.stage)}>
                         Advance
                       </OsButton>
                     ) : null}

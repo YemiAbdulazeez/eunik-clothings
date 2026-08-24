@@ -1,4 +1,4 @@
-import { type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Field, OsButton, PageHeader, ProgressBar, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
@@ -9,19 +9,26 @@ import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioCustomer() {
   const { id = "" } = useParams();
-  const { data: person } = useAsync(() => db.people.get(id), [id]);
+  const { data: person, reload } = useAsync(() => db.people.get(id), [id]);
   const { data: orders } = useAsync(
     () => db.orders.listAll().then((rows) => rows.filter((row) => row.customerId === id)),
     [id],
   );
   const { data: profiles } = useAsync(() => db.measurements.listByCustomer(id).catch(() => []), [id]);
   const outstanding = (orders ?? []).reduce((sum, item) => sum + Math.max(0, item.totalKobo - item.paidKobo), 0);
+  const [busy, setBusy] = useState(false);
 
   async function saveNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const notes = String(new FormData(event.currentTarget).get("notes") ?? "");
-    await db.people.updateUser(id, { notes });
-    toast.success("Dossier updated.");
+    setBusy(true);
+    try {
+      await db.people.updateUser(id, { notes });
+      toast.success("Dossier updated.");
+      await reload();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!person) return <p>Loading client…</p>;
@@ -71,7 +78,9 @@ export default function StudioCustomer() {
           <Field label="Internal note">
             <textarea name="notes" defaultValue={person.notes} rows={4} className={inputClass} />
           </Field>
-          <OsButton type="submit">Save note</OsButton>
+          <OsButton type="submit" loading={busy} loadingText="Saving…">
+            Save note
+          </OsButton>
         </form>
       </SectionCard>
       <SectionCard title="Orders">
