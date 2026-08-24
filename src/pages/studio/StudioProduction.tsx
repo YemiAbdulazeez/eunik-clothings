@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { PageHeader, SectionCard, StatCard, StatusBadge, OsButton, ProgressBar } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatCard, StatusBadge, OsButton, ProgressBar } from "@/components/os/ui";
 import { db, type ProductionStage } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
@@ -20,8 +20,10 @@ function columnForStage(stage: ProductionStage): string {
 
 export default function StudioProduction() {
   const { user } = useSession();
-  const { data: board } = useAsync(() => db.production.listBoard(), []);
+  const { data: board, loading } = useAsync(() => db.production.listBoard(), []);
   const { data: staff } = useAsync(() => db.people.staff().catch(() => []), []);
+
+  if (loading && !board) return <PageLoading />;
 
   async function advance(id: string, stage: ProductionStage) {
     const role = user?.role ?? "manager";

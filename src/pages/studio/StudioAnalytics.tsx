@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { PageHeader, SectionCard, StatCard } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatCard } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -35,6 +35,8 @@ export default function StudioAnalytics() {
   const traffic = trafficQ.data as TrafficSnapshot | null;
   const trafficLoading = trafficQ.loading;
   const trafficError = trafficQ.error;
+
+  if (overviewQ.loading && !overview) return <PageLoading />;
 
   async function refresh() {
     await Promise.all([overviewQ.reload(), seriesQ.reload(), profitQ.reload(), trafficQ.reload()]);

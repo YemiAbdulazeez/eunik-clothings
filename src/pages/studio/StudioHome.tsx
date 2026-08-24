@@ -8,6 +8,7 @@ import {
   Headphones,
   Layers,
   Shirt,
+  User,
   UserCog,
   Users,
   Wallet,
@@ -24,7 +25,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { DashNavGrid, NeedAttention, PageHeader, ProgressBar, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
+import { DashNavGrid, NeedAttention, PageHeader, PageLoading, ProgressBar, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -54,6 +55,8 @@ export default function StudioHome() {
   const settings = settingsQ.data;
   const requests = requestsQ.data;
   const board = boardQ.data;
+
+  if (overviewQ.loading && !overview) return <PageLoading />;
   async function refresh() {
     await Promise.all([
       overviewQ.reload(),
@@ -88,6 +91,17 @@ export default function StudioHome() {
   const today = settings?.demoToday ?? new Date().toISOString().slice(0, 10);
 
   const attention = [
+    ...(user?.mustChangePassword
+      ? [
+          {
+            id: "pwd",
+            title: "Still on a temporary password",
+            detail: "You can keep using it, or set a private one in Profile when you are ready.",
+            href: "/studio/profile",
+            actionLabel: "Update password",
+          },
+        ]
+      : []),
     ...(role === "desk" || role === "super_admin" || role === "manager"
       ? newRequests.map((item) => ({
           id: item.id,
@@ -141,6 +155,7 @@ export default function StudioHome() {
     { to: "/studio/analytics", label: "Analytics", hint: "Sales and traffic", icon: BarChart3, section: "analytics" as const },
     { to: "/studio/support", label: "Support", hint: "Client messages", icon: Headphones, section: "support" as const },
     { to: "/studio/people", label: "Staff", hint: "Hire and access", icon: UserCog, section: "people" as const },
+    { to: "/studio/profile", label: "Profile", hint: "Your file & password", icon: User, section: "profile" as const },
     { to: "/studio/events", label: "Events", hint: "Shows and fittings", icon: Calendar, section: "events" as const },
     { to: "/studio/production", label: "Floor board", hint: "Orders on the floor", icon: Factory, section: "production" as const },
   ].filter((tile) => (user ? canSeeSection(user, tile.section) : true));

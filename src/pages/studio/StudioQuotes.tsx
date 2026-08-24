@@ -1,15 +1,17 @@
 import { Fragment, useState } from "react";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, SectionCard, StatusBadge, StatCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, StatCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira, nairaToKobo } from "@/lib/money";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioQuotes() {
-  const { data: quotes, reload } = useAsync(() => db.quotations.listAll(), []);
+  const { data: quotes, reload, loading } = useAsync(() => db.quotations.listAll(), []);
   const [revising, setRevising] = useState<string | null>(null);
   const waiting = quotes?.filter((item) => item.status === "sent").length ?? 0;
+
+  if (loading && !quotes) return <PageLoading />;
 
   return (
     <div className="space-y-6">

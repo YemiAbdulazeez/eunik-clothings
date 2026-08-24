@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import OrderStepper from "@/components/os/OrderStepper";
-import { OsButton, PageHeader, SectionCard, StatusBadge, StatCard } from "@/components/os/ui";
+import { OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, StatCard } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -40,7 +40,7 @@ export default function StudioOrderDetail() {
     }
   }
 
-  if (loading && !order) return <p>Loading order…</p>;
+  if (loading && !order) return <PageLoading />;
   if (!order) {
     return (
       <div className="space-y-3">

@@ -1,18 +1,20 @@
 import { type FormEvent, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountReviews() {
-  const { data: orders } = useAsync(() => db.orders.listMine(), []);
-  const { data: reviews } = useAsync(() => db.reviews.listMine(), []);
+  const { data: orders, loading: ordersLoading } = useAsync(() => db.orders.listMine(), []);
+  const { data: reviews, loading: reviewsLoading } = useAsync(() => db.reviews.listMine(), []);
   const [busy, setBusy] = useState(false);
   const reviewable = (orders ?? []).filter(
     (item) => item.productId && (item.status === "delivered" || item.status === "ready"),
   );
+
+  if ((ordersLoading || reviewsLoading) && !orders && !reviews) return <PageLoading />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

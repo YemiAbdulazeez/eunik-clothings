@@ -1,11 +1,12 @@
 import { toast } from "sonner";
-import { OsButton, PageHeader, SectionCard, StatusBadge } from "@/components/os/ui";
+import { OsButton, PageHeader, PageLoading, SectionCard, StatusBadge } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AtelierFittings() {
-  const { data: fittings } = useAsync(() => db.fittings.list(), []);
+  const { data: fittings, loading } = useAsync(() => db.fittings.list(), []);
+  if (loading && !fittings) return <PageLoading />;
   return (
     <div className="space-y-6">
       <PageHeader title="Fittings" subtitle="Mark done when the client has stood. Ready still needs QC." />

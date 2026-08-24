@@ -1,7 +1,7 @@
 import { Fragment, type FormEvent, useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db, type NavSection, type PublicUser, type Role } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -133,9 +133,9 @@ function StaffAdminActions({ person, onDone }: { person: PublicUser; onDone: () 
     if (!window.confirm(`Reset password for ${person.email}?`)) return;
     const result = await db.people.resetPassword(person.id);
     if (result.emailSent) {
-      toast.success("Temporary password emailed. They must change it on next sign-in.");
+      toast.success("Temporary password emailed. It stays valid until they change it from Profile.");
     } else {
-      toast.success(`Temp password: ${result.tempPassword} — copy and share securely.`);
+      toast.success(`Temp password: ${result.tempPassword} — copy and share securely. Reusable until they change it.`);
     }
     onDone();
   }
@@ -170,7 +170,7 @@ function StaffAdminActions({ person, onDone }: { person: PublicUser; onDone: () 
 
 export default function StudioPeople() {
   const { user } = useSession();
-  const { data: staff, reload } = useAsync(() => db.people.staff(), []);
+  const { data: staff, reload, loading } = useAsync(() => db.people.staff(), []);
   const principal = user?.role === "super_admin";
   const [open, setOpen] = useState(false);
   const [hireBusy, setHireBusy] = useState(false);
@@ -179,6 +179,8 @@ export default function StudioPeople() {
   const [editing, setEditing] = useState<string | null>(null);
 
   const house = useMemo(() => staff ?? [], [staff]);
+
+  if (loading && !staff) return <PageLoading />;
 
   async function hire(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -208,9 +210,9 @@ export default function StudioPeople() {
       const temp = (hired as PublicUser & { tempPassword?: string; emailSent?: boolean }).tempPassword;
       const emailed = (hired as PublicUser & { emailSent?: boolean }).emailSent;
       if (emailed) {
-        toast.success("Staff hired. Temporary password emailed — they must change it on first sign-in.");
+        toast.success("Staff hired. Temporary password emailed — reusable until they change it from Profile.");
       } else if (temp) {
-        toast.success(`Staff hired. Temp password: ${temp} — share securely; they must change it on first sign-in.`);
+        toast.success(`Staff hired. Temp password: ${temp} — share securely; reusable until they change it.`);
       } else {
         toast.success("Staff hired.");
       }

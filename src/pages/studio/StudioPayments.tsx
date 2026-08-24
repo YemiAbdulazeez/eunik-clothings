@@ -1,14 +1,16 @@
 import { toast } from "sonner";
-import { PageHeader, SectionCard, StatCard, StatusBadge, OsButton, NeedAttention } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatCard, StatusBadge, OsButton, NeedAttention } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { formatWhen, statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioPayments() {
-  const { data: payments } = useAsync(() => db.payments.list(), []);
+  const { data: payments, loading } = useAsync(() => db.payments.list(), []);
   const waiting = (payments ?? []).filter((item) => item.status === "awaiting_verification");
   const ok = (payments ?? []).filter((item) => item.status === "successful").reduce((sum, item) => sum + item.amountKobo, 0);
+
+  if (loading && !payments) return <PageLoading />;
 
   return (
     <div className="space-y-6">

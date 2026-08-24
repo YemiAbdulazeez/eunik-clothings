@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { toast } from "sonner";
-import { OsButton, PageHeader, SectionCard, StatCard } from "@/components/os/ui";
+import { OsButton, PageHeader, PageLoading, SectionCard, StatCard } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -8,13 +8,15 @@ import { formatWhen } from "@/lib/format";
 
 export default function StudioAttendance() {
   const { user } = useSession();
-  const { data: rows } = useAsync(() => db.attendance.list(), []);
+  const { data: rows, loading } = useAsync(() => db.attendance.list(), []);
   const { data: staff } = useAsync(() => db.people.staff().catch(() => []), []);
   const names = Object.fromEntries((staff ?? []).map((item) => [item.id, item.name]));
   names[user?.id ?? ""] = user?.name ?? "You";
   const today = new Date().toISOString().slice(0, 10);
   const todayRows = (rows ?? []).filter((item) => item.at.slice(0, 10) === today);
   const lastMine = (rows ?? []).find((item) => item.userId === user?.id);
+
+  if (loading && !rows) return <PageLoading />;
 
   async function punch(type: "in" | "out") {
     await db.attendance.clock(type);

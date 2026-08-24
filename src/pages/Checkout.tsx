@@ -98,7 +98,7 @@ export default function Checkout() {
           toast.success("Receipt sent to the house.");
         }
         if ("accountCreated" in placed && placed.accountCreated) {
-          toast.message("We emailed your temporary password — change it after you sign in next time.");
+          toast.message("We emailed your temporary password — it stays valid until you change it from Profile.");
         }
         await refreshCart();
         navigate(`/orders/thank-you/${orderId}`);

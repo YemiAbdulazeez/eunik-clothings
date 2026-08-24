@@ -2,7 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import DocumentSheet from "@/components/DocumentSheet";
-import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -12,12 +12,14 @@ import { useSession } from "@/context/SessionProvider";
 export default function AccountCustom() {
   const { user } = useSession();
   const navigate = useNavigate();
-  const { data: requests, reload: reloadRequests } = useAsync(() => db.customDesigns.listMine(), []);
+  const { data: requests, reload: reloadRequests, loading } = useAsync(() => db.customDesigns.listMine(), []);
   const { data: quotes, reload: reloadQuotes } = useAsync(() => db.quotations.listMine(), []);
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const [open, setOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+
+  if (loading && !requests) return <PageLoading />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

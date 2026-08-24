@@ -9,9 +9,10 @@ import {
   Package,
   ShoppingBag,
   Sparkles,
+  User,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DashNavGrid, NeedAttention, PageHeader, ProgressBar, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
+import { DashNavGrid, NeedAttention, PageHeader, PageLoading, ProgressBar, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -60,6 +61,9 @@ export default function AccountHome() {
     [main?.id],
   );
   const prod = prodQ.data;
+
+  if (ordersQ.loading && !orders) return <PageLoading />;
+
   async function refresh() {
     await Promise.all([
       ordersQ.reload(),
@@ -94,9 +98,10 @@ export default function AccountHome() {
       ? [
           {
             id: "pwd",
-            title: "Change your temporary password",
-            detail: "It was issued at checkout. Set a private one in Profile.",
+            title: "Still on a temporary password",
+            detail: "You can keep using it, or set a private one in Profile when you are ready.",
             href: "/account/profile",
+            actionLabel: "Update password",
           },
         ]
       : []),
@@ -171,6 +176,7 @@ export default function AccountHome() {
           { to: "/account/wishlist", label: "Wishlist", hint: "Saved looks", icon: Heart },
           { to: "/account/reviews", label: "Reviews", hint: "After delivery", icon: MessageCircleHeart },
           { to: "/account/journal", label: "Magazine", hint: "House stories", icon: BookOpen },
+          { to: "/account/profile", label: "Profile", hint: "Details & password", icon: User },
         ]}
       />
 

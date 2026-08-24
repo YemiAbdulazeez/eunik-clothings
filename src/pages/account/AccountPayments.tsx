@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import PayMethods from "@/components/PayMethods";
-import { PageHeader, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -12,12 +12,14 @@ import { useSession } from "@/context/SessionProvider";
 
 export default function AccountPayments() {
   const { user } = useSession();
-  const { data: orders, reload: refreshOrders } = useAsync(() => db.orders.listMine(), []);
-  const { data: payments, reload: refreshPayments } = useAsync(() => db.payments.list(), []);
+  const { data: orders, reload: refreshOrders, loading: ordersLoading } = useAsync(() => db.orders.listMine(), []);
+  const { data: payments, reload: refreshPayments, loading: paymentsLoading } = useAsync(() => db.payments.list(), []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const dues = (orders ?? []).filter((item) => item.paidKobo < item.totalKobo && item.status !== "cancelled");
   const settled = (payments ?? []).filter((item) => item.status === "successful").reduce((sum, item) => sum + item.amountKobo, 0);
   const openTotal = dues.reduce((sum, item) => sum + (item.totalKobo - item.paidKobo), 0);
+
+  if ((ordersLoading || paymentsLoading) && !orders && !payments) return <PageLoading />;
 
   async function payDue(orderId: string, choice: Parameters<typeof db.orders.payBalance>[1]) {
     setBusyId(orderId);

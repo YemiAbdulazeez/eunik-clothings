@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PageHeader, SectionCard, StatusBadge, StatCard } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatusBadge, StatCard } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -7,12 +7,14 @@ import { statusLabel, statusTone } from "@/lib/format";
 import { useMemo, useState } from "react";
 
 export default function StudioOrders() {
-  const { data: orders } = useAsync(() => db.orders.listAll(), []);
+  const { data: orders, loading } = useAsync(() => db.orders.listAll(), []);
   const [filter, setFilter] = useState("all");
   const rows = useMemo(
     () => (orders ?? []).filter((item) => (filter === "all" ? true : item.status === filter || item.kind === filter)),
     [orders, filter],
   );
+
+  if (loading && !orders) return <PageLoading />;
 
   return (
     <div className="space-y-6">

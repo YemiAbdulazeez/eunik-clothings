@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { PageHeader, SectionCard, StatCard, EmptyState } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatCard, EmptyState } from "@/components/os/ui";
 import { db } from "@/db/database";
 import type { PublicUser } from "@/db/types";
 import { useAsync } from "@/hooks/useAsync";
 
 export default function StudioCustomers() {
-  const { data: customers } = useAsync(() => db.people.customers(), []);
+  const { data: customers, loading } = useAsync(() => db.people.customers(), []);
+  if (loading && !customers) return <PageLoading />;
   return (
     <div className="space-y-6">
       <PageHeader title="Customers" subtitle="Guest checkouts and registered clients — open a book for notes, orders, and balances." />

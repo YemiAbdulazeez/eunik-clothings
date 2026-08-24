@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { OsButton, PageHeader, SectionCard, StatusBadge } from "@/components/os/ui";
+import { OsButton, PageHeader, PageLoading, SectionCard, StatusBadge } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -8,8 +8,10 @@ import { canConfirmAppointments } from "@/lib/rbac";
 
 export default function AtelierAppointments() {
   const { user } = useSession();
-  const { data: rows } = useAsync(() => db.appointments.listAll(), []);
+  const { data: rows, loading } = useAsync(() => db.appointments.listAll(), []);
   const canConfirm = user ? canConfirmAppointments(user) : false;
+
+  if (loading && !rows) return <PageLoading />;
 
   return (
     <div className="space-y-6">

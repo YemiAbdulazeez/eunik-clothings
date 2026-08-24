@@ -1,16 +1,18 @@
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/os/ImageUpload";
-import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { slugify } from "@/lib/format";
 
 export default function StudioEvents() {
-  const { data: events, reload } = useAsync(() => db.content.events(), []);
+  const { data: events, reload, loading } = useAsync(() => db.content.events(), []);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const current = (events ?? []).find((item) => item.id === editing);
+
+  if (loading && !events) return <PageLoading />;
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

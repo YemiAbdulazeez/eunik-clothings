@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -8,8 +8,10 @@ import { statusLabel, statusTone } from "@/lib/format";
 
 export default function AccountSupport() {
   const { user } = useSession();
-  const { data: tickets } = useAsync(() => db.tickets.listMine(), []);
+  const { data: tickets, loading } = useAsync(() => db.tickets.listMine(), []);
   const [busy, setBusy] = useState(false);
+
+  if (loading && !tickets) return <PageLoading />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

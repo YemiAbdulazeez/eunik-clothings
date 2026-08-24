@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PageHeader, SectionCard, EmptyState, OsButton } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, EmptyState, OsButton } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -7,11 +7,13 @@ import { toast } from "sonner";
 
 export default function AccountMeasurements() {
   const { user } = useSession();
-  const { data: profiles } = useAsync(
+  const { data: profiles, loading } = useAsync(
     () => (user ? db.measurements.listByCustomer(user.id) : Promise.resolve([])),
     [user?.id],
   );
   const { data: appointments } = useAsync(() => db.appointments.listMine(), []);
+
+  if (loading && !profiles) return <PageLoading />;
 
   return (
     <div className="space-y-6">

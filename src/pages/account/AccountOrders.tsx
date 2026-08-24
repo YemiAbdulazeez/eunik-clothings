@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { RotateCcw } from "lucide-react";
 import OrderStepper from "@/components/os/OrderStepper";
 import { AsyncGuard } from "@/components/AsyncState";
-import { EmptyState, OsButton, PageHeader, SectionCard, StatusBadge } from "@/components/os/ui";
+import { EmptyState, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -27,6 +27,8 @@ export default function AccountOrders() {
     }
   }
 
+  if (loading && !bundle) return <PageLoading />;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -39,9 +41,8 @@ export default function AccountOrders() {
         }
       />
       <AsyncGuard
-        loading={loading}
+        loading={false}
         error={error}
-        skeleton={<p className="py-10 text-center text-sm text-muted">Opening your orders…</p>}
         empty={!bundle?.length ? <EmptyState title="No orders yet" text="Add something from the shop to place your first order." /> : undefined}
       >
         {bundle?.length ? (

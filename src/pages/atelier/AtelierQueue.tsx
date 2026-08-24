@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { OsButton, PageHeader, ProgressBar, SectionCard, StatusBadge } from "@/components/os/ui";
+import { OsButton, PageHeader, PageLoading, ProgressBar, SectionCard, StatusBadge } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -8,7 +8,9 @@ import { ALL_STAGES, canAdvanceStage, nextLegalStage } from "@/lib/productionSta
 
 export default function AtelierQueue() {
   const { user } = useSession();
-  const { data: board } = useAsync(() => db.production.listBoard(), []);
+  const { data: board, loading } = useAsync(() => db.production.listBoard(), []);
+
+  if (loading && !board) return <PageLoading />;
 
   return (
     <div className="space-y-6">

@@ -2,18 +2,20 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import QuoteComposer from "@/components/QuoteComposer";
-import { PageHeader, SectionCard, StatusBadge, OsButton } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatusBadge, OsButton } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioCustom() {
-  const { data: requests, reload } = useAsync(() => db.customDesigns.listAll(), []);
+  const { data: requests, reload, loading } = useAsync(() => db.customDesigns.listAll(), []);
   const { data: quotes, reload: reloadQuotes } = useAsync(() => db.quotations.listAll(), []);
   const { data: settings } = useAsync(() => db.settings.get(), []);
   const [composing, setComposing] = useState<string | null>(null);
   const [revising, setRevising] = useState<string | null>(null);
+
+  if (loading && !requests) return <PageLoading />;
 
   const bank = settings?.bank
     ? {

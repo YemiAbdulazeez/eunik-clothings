@@ -59,7 +59,7 @@ export default function ProductDetail() {
   if (!product) return shell("Look", <p className="px-6 py-20 text-center">That SKU is not on the rail.</p>);
 
   const look = product;
-  const images = look.images?.length ? look.images : [look.image];
+  const images = [...new Set((look.images?.length ? look.images : [look.image]).filter(Boolean))];
   const quote = Boolean(look.priceOnRequest);
   const out = (variants ?? []).length > 0 && (variants ?? []).every((item) => item.stock <= 0);
   const canShopHere = canShop(user);

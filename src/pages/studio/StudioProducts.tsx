@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Plus, Shirt } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload, { ImageUploadList } from "@/components/os/ImageUpload";
-import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira, nairaToKobo } from "@/lib/money";
@@ -44,7 +44,7 @@ export default function StudioProducts() {
 
   if (isForm) {
     if (!isNew && loading) {
-      return <p className="py-10 text-center text-sm text-muted">Opening look…</p>;
+      return <PageLoading />;
     }
     if (!isNew && !editing) {
       return (
@@ -58,6 +58,8 @@ export default function StudioProducts() {
     }
     return <ProductForm key={editing?.id ?? id} existing={editing ?? null} isNew={isNew} categories={categories ?? []} />;
   }
+
+  if (listLoading && !products) return <PageLoading />;
 
   return (
     <div className="space-y-6">
@@ -105,7 +107,10 @@ function ProductForm({
   const navigate = useNavigate();
   const { user } = useSession();
   const canDelete = user ? canDeleteProducts(user) : false;
-  const [images, setImages] = useState<string[]>(existing?.images?.length ? existing.images : existing?.image ? [existing.image] : []);
+  const [images, setImages] = useState<string[]>(() => {
+    const list = existing?.images?.length ? existing.images : existing?.image ? [existing.image] : [];
+    return [...new Set(list.filter(Boolean))];
+  });
   const [quote, setQuote] = useState(Boolean(existing?.priceOnRequest));
   const [busy, setBusy] = useState(false);
 
@@ -118,11 +123,12 @@ function ProductForm({
     const data = new FormData(event.currentTarget);
     setBusy(true);
     try {
+      const uniqueImages = [...new Set(images.filter(Boolean))];
       const payload = {
         sku: String(data.get("sku")),
         name: String(data.get("name")),
-        image: images[0],
-        images,
+        image: uniqueImages[0],
+        images: uniqueImages,
         category: String(data.get("category")),
         priceKobo: quote ? 0 : nairaToKobo(Number(data.get("price") || 0)),
         priceOnRequest: quote,

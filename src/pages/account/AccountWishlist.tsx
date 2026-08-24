@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { PageHeader, EmptyState, OsButton, SectionCard } from "@/components/os/ui";
+import { PageHeader, PageLoading, EmptyState, OsButton, SectionCard } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
 
 export default function AccountWishlist() {
-  const { data: items } = useAsync(() => db.wishlist.list(), []);
+  const { data: items, loading } = useAsync(() => db.wishlist.list(), []);
+  if (loading && !items) return <PageLoading />;
   return (
     <div className="space-y-6">
       <PageHeader title="Wishlist" subtitle="Looks you asked the house to keep." />

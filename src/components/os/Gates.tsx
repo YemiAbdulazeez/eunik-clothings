@@ -28,7 +28,6 @@ import {
 import { useSession } from "@/context/SessionProvider";
 import OsShell, { HouseMark } from "@/components/os/OsShell";
 import DemoRoleSwitcher from "@/components/os/DemoRoleSwitcher";
-import MustChangePasswordGate from "@/components/MustChangePasswordGate";
 import { landingPath } from "@/db/session";
 import { canSeeSection, canUseArea, sectionForPath } from "@/lib/rbac";
 import type { PublicUser as HouseUser } from "@/db/types";
@@ -66,6 +65,7 @@ const studioItems = [
   { to: "/studio/people", label: "Staff", icon: UserCog },
   { to: "/studio/appointments", label: "Bookings", icon: Calendar },
   { to: "/studio/attendance", label: "Attendance", icon: Clock },
+  { to: "/studio/profile", label: "Profile", icon: User },
   { to: "/studio/settings", label: "Settings", icon: Settings },
 ];
 
@@ -110,18 +110,16 @@ export function AccountGate() {
   if (user.role !== "client") return <Navigate to={landingPath(user)} replace />;
   return (
     <>
-      <MustChangePasswordGate>
-        <OsShell
-          brand="My account"
-          mark={<HouseMark />}
-          items={accountItems}
-          searchPlaceholder="Search orders, quotes, bookings…"
-          profileTo="/account/profile"
-        >
-          <AccountPageTracker />
-          <Outlet />
-        </OsShell>
-      </MustChangePasswordGate>
+      <OsShell
+        brand="My account"
+        mark={<HouseMark />}
+        items={accountItems}
+        searchPlaceholder="Search orders, quotes, bookings…"
+        profileTo="/account/profile"
+      >
+        <AccountPageTracker />
+        <Outlet />
+      </OsShell>
       <DemoRoleSwitcher />
     </>
   );
@@ -135,17 +133,15 @@ export function StudioGate() {
   if (!canUseArea(user, "studio")) return <Navigate to={landingPath(user)} replace />;
   return (
     <>
-      <MustChangePasswordGate>
-        <OsShell
-          brand="House"
-          mark={<HouseMark />}
-          items={visibleItems(user, studioItems)}
-          searchPlaceholder="Search orders, clients, products…"
-          profileTo="/studio/profile"
-        >
-          <RestrictedOutlet user={user} />
-        </OsShell>
-      </MustChangePasswordGate>
+      <OsShell
+        brand="House"
+        mark={<HouseMark />}
+        items={visibleItems(user, studioItems)}
+        searchPlaceholder="Search orders, clients, products…"
+        profileTo="/studio/profile"
+      >
+        <RestrictedOutlet user={user} />
+      </OsShell>
       <DemoRoleSwitcher />
     </>
   );
@@ -159,17 +155,15 @@ export function AtelierGate() {
   if (!canUseArea(user, "atelier")) return <Navigate to={landingPath(user)} replace />;
   return (
     <>
-      <MustChangePasswordGate>
-        <OsShell
-          brand="Floor"
-          mark={<HouseMark />}
-          items={visibleItems(user, atelierItems)}
-          searchPlaceholder="Find an order or client…"
-          profileTo="/atelier/profile"
-        >
-          <RestrictedOutlet user={user} />
-        </OsShell>
-      </MustChangePasswordGate>
+      <OsShell
+        brand="Floor"
+        mark={<HouseMark />}
+        items={visibleItems(user, atelierItems)}
+        searchPlaceholder="Find an order or client…"
+        profileTo="/atelier/profile"
+      >
+        <RestrictedOutlet user={user} />
+      </OsShell>
       <DemoRoleSwitcher />
     </>
   );

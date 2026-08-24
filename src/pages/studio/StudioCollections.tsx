@@ -2,18 +2,20 @@ import { type FormEvent, useState } from "react";
 import { Layers, Plus } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/os/ImageUpload";
-import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { slugify } from "@/lib/format";
 
 export default function StudioCollections() {
-  const { data: categories } = useAsync(() => db.categories.list(), []);
+  const { data: categories, loading } = useAsync(() => db.categories.list(), []);
   const { data: counts } = useAsync(() => db.categories.counts(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const editing = (categories ?? []).find((item) => item.id === editingId) ?? null;
+
+  if (loading && !categories) return <PageLoading />;
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

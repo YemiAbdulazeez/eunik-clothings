@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Calendar, ClipboardList, Clock, Ruler, Shirt, User } from "lucide-react";
-import { DashNavGrid, NeedAttention, OsButton, PageHeader, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
+import { DashNavGrid, NeedAttention, OsButton, PageHeader, PageLoading, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
 import { db, type ProductionStage } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
@@ -23,6 +23,8 @@ export default function AtelierBench() {
   const assigned = board ?? [];
   const today = settings?.demoToday ?? new Date().toISOString().slice(0, 10);
   const overdue = assigned.filter((item) => item.dueDate < today);
+
+  if (boardQ.loading && !board) return <PageLoading />;
 
   async function refresh() {
     await Promise.all([boardQ.reload(), fittingsQ.reload(), settingsQ.reload()]);
@@ -77,6 +79,17 @@ export default function AtelierBench() {
       </div>
       <NeedAttention
         items={[
+          ...(user?.mustChangePassword
+            ? [
+                {
+                  id: "pwd",
+                  title: "Still on a temporary password",
+                  detail: "You can keep using it, or set a private one in Profile when you are ready.",
+                  href: "/atelier/profile",
+                  actionLabel: "Update password",
+                },
+              ]
+            : []),
           ...overdue.map((item) => ({
             id: item.id,
             title: `${item.garment} needs the next stage`,

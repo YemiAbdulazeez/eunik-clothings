@@ -34,6 +34,20 @@ export function PageHeader({
   );
 }
 
+/** Full-page wait state for dashboard screens while data loads. */
+export function PageLoading({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div
+      className="flex min-h-[42vh] flex-col items-center justify-center gap-3 text-sm text-muted"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="h-8 w-8 animate-spin text-ink" aria-hidden />
+      <p>{label}</p>
+    </div>
+  );
+}
+
 export function OsButton({
   children,
   variant = "ink",
@@ -207,7 +221,7 @@ export function NeedAttention({ items }: { items: AttentionItem[] }) {
               </OsButton>
             ) : item.href ? (
               <Link to={item.href} className="os-pill inline-flex bg-ink text-white">
-                Open <ArrowRight className="h-4 w-4" />
+                {item.actionLabel ?? "Open"} <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}
           </li>

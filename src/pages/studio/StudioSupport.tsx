@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { statusTone } from "@/lib/format";
 
 export default function StudioSupport() {
-  const { data: tickets } = useAsync(() => db.tickets.list(), []);
+  const { data: tickets, loading } = useAsync(() => db.tickets.list(), []);
   const { data: reviews } = useAsync(() => db.reviews.listAll().catch(() => []), []);
   const [reply, setReply] = useState<Record<string, string>>({});
+
+  if (loading && !tickets) return <PageLoading />;
 
   return (
     <div className="space-y-6">

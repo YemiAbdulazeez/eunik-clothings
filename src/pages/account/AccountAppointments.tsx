@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { EmptyState, Field, OsButton, PageHeader, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { statusLabel, statusTone } from "@/lib/format";
@@ -8,8 +8,10 @@ import { useSession } from "@/context/SessionProvider";
 
 export default function AccountAppointments() {
   const { user } = useSession();
-  const { data: rows } = useAsync(() => db.appointments.listMine(), []);
+  const { data: rows, loading } = useAsync(() => db.appointments.listMine(), []);
   const [open, setOpen] = useState(false);
+
+  if (loading && !rows) return <PageLoading />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/os/ImageUpload";
-import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, inputClass } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -11,10 +11,14 @@ const TABS = ["Homepage", "Magazine", "Lookbook", "Contact"] as const;
 
 export default function StudioContent() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Homepage");
-  const { data: home } = useAsync(() => db.content.homepage(), []);
-  const { data: journal } = useAsync(() => db.content.journal(), []);
-  const { data: lookbook } = useAsync(() => db.content.lookbook(), []);
+  const { data: home, loading: homeLoading } = useAsync(() => db.content.homepage(), []);
+  const { data: journal, loading: journalLoading } = useAsync(() => db.content.journal(), []);
+  const { data: lookbook, loading: lookbookLoading } = useAsync(() => db.content.lookbook(), []);
   const { data: mailbox } = useAsync(() => db.content.mailbox().catch(() => []), []);
+
+  if ((homeLoading || journalLoading || lookbookLoading) && !home && !journal && !lookbook) {
+    return <PageLoading />;
+  }
 
   return (
     <div className="space-y-6">

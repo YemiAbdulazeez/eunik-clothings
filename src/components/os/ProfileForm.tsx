@@ -153,7 +153,7 @@ export default function ProfileForm({ user }: { user: PublicUser }) {
               )}
             </>
           )}
-          <OsButton type="submit" disabled={busy}>
+          <OsButton type="submit" disabled={busy} loading={busy} loadingText="Saving…">
             Save details
           </OsButton>
         </form>
@@ -161,17 +161,17 @@ export default function ProfileForm({ user }: { user: PublicUser }) {
       <SectionCard title="Change password" action={<KeyRound className="h-5 w-5 text-ink" />}>
         {user.mustChangePassword ? (
           <p className="mb-4 rounded-xl border border-gold bg-gold/20 px-3 py-2 text-sm text-ink">
-            You are still on a temporary password. Set a private one here.
+            You are still on a temporary password. It stays valid until you change it — update when you are ready.
           </p>
         ) : null}
         <form onSubmit={(event) => void savePassword(event)} className="space-y-4">
           <Field label="Current password">
-            <input name="current" type="password" required className={inputClass} />
+            <input name="current" type="password" required className={inputClass} autoComplete="current-password" />
           </Field>
           <Field label="New password">
-            <input name="next" type="password" required minLength={8} className={inputClass} />
+            <input name="next" type="password" required minLength={8} className={inputClass} autoComplete="new-password" />
           </Field>
-          <OsButton type="submit" disabled={busy} variant="gold">
+          <OsButton type="submit" disabled={busy} loading={busy} loadingText="Updating…" variant="gold">
             Update password
           </OsButton>
         </form>

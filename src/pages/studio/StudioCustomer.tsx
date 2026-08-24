@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, ProgressBar, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, ProgressBar, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
@@ -9,7 +9,7 @@ import { statusLabel, statusTone } from "@/lib/format";
 
 export default function StudioCustomer() {
   const { id = "" } = useParams();
-  const { data: person, reload } = useAsync(() => db.people.get(id), [id]);
+  const { data: person, reload, loading } = useAsync(() => db.people.get(id), [id]);
   const { data: orders } = useAsync(
     () => db.orders.listAll().then((rows) => rows.filter((row) => row.customerId === id)),
     [id],
@@ -31,7 +31,17 @@ export default function StudioCustomer() {
     }
   }
 
-  if (!person) return <p>Loading client…</p>;
+  if (loading && !person) return <PageLoading />;
+  if (!person) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted">Client not found.</p>
+        <Link to="/studio/customers" className="os-pill border border-line">
+          Back to customers
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

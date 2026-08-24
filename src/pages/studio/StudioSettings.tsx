@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Field, OsButton, PageHeader, SectionCard, inputClass } from "@/components/os/ui";
+import { Field, OsButton, PageHeader, PageLoading, SectionCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
@@ -11,7 +11,7 @@ export default function StudioSettings() {
   const navigate = useNavigate();
   const { user } = useSession();
   const isPrincipal = user?.role === "super_admin";
-  const { data: settings, reload } = useAsync(() => db.settings.get(), []);
+  const { data: settings, reload, loading } = useAsync(() => db.settings.get(), []);
   const { data: logs } = useAsync(
     () => (isPrincipal || user?.role === "manager" ? db.audit.list() : Promise.resolve([])),
     [user?.role],
@@ -60,6 +60,7 @@ export default function StudioSettings() {
     }
   }
 
+  if (loading && !settings) return <PageLoading />;
   if (!settings) return null;
 
   return (
