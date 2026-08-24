@@ -11,6 +11,8 @@
  * db.client.ts delegates per-namespace when HTTP_ENABLED is true.
  */
 
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from "./tokenStore";
+
 const BASE = import.meta.env.VITE_API_URL as string | undefined;
 
 export const HTTP_ENABLED = Boolean(BASE);
@@ -24,19 +26,71 @@ class ApiError extends Error {
   }
 }
 
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-Requested-With": "XMLHttpRequest",
+    ...extra,
+  };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshSession(): Promise<boolean> {
+  if (!BASE) return false;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh = getRefreshToken();
+    try {
+      const res = await fetch(`${BASE.replace(/\/$/, "")}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(refresh ? { refreshToken: refresh } : {}),
+      });
+      if (!res.ok) {
+        clearAuthTokens();
+        return false;
+      }
+      const data = (await res.json().catch(() => ({}))) as AuthResponse;
+      if (data.accessToken) {
+        setAuthTokens(
+          { access: data.accessToken, refresh: data.refreshToken ?? refresh ?? undefined },
+          { remember: Boolean(localStorage.getItem("eunik_refresh")) },
+        );
+      }
+      return Boolean(data.accessToken || data.user);
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
 async function api<T = unknown>(
   path: string,
-  { method = "GET", body }: { method?: string; body?: unknown } = {},
+  { method = "GET", body, skipRefresh = false }: { method?: string; body?: unknown; skipRefresh?: boolean } = {},
 ): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: {
+    headers: authHeaders({
       "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest",
-    },
+    }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  if (res.status === 401 && !skipRefresh && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
+    const ok = await tryRefreshSession();
+    if (ok) {
+      return api(path, { method, body, skipRefresh: true });
+    }
+  }
+
   if (res.status === 204) return null as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -60,6 +114,16 @@ export interface HttpUser {
 interface AuthResponse {
   user: HttpUser;
   accessToken?: string;
+  refreshToken?: string;
+}
+
+function captureTokens(data: AuthResponse, remember = false) {
+  if (data.accessToken || data.refreshToken) {
+    setAuthTokens(
+      { access: data.accessToken, refresh: data.refreshToken },
+      { remember },
+    );
+  }
 }
 
 export const httpAuth = {
@@ -68,15 +132,18 @@ export const httpAuth = {
     password: string,
     opts: { portal?: "client" | "staff"; remember?: boolean } = {},
   ): Promise<HttpUser> {
+    const remember = Boolean(opts.remember);
     const data = await api<AuthResponse>("/auth/login", {
       method: "POST",
       body: {
         email,
         password,
         portal: opts.portal,
-        remember: Boolean(opts.remember),
+        remember,
       },
+      skipRefresh: true,
     });
+    captureTokens(data, remember);
     return data.user;
   },
 
@@ -97,7 +164,9 @@ export const httpAuth = {
     const data = await api<AuthResponse>("/auth/register", {
       method: "POST",
       body: input,
+      skipRefresh: true,
     });
+    captureTokens(data, false);
     return data.user;
   },
 
@@ -112,14 +181,30 @@ export const httpAuth = {
   },
 
   async logout(): Promise<void> {
-    await api("/auth/logout", { method: "POST" });
+    const refresh = getRefreshToken();
+    try {
+      await api("/auth/logout", {
+        method: "POST",
+        body: refresh ? { refreshToken: refresh } : {},
+        skipRefresh: true,
+      });
+    } finally {
+      clearAuthTokens();
+    }
   },
 
   async refresh(): Promise<HttpUser | null> {
     try {
-      const data = await api<AuthResponse>("/auth/refresh", { method: "POST" });
+      const refresh = getRefreshToken();
+      const data = await api<AuthResponse>("/auth/refresh", {
+        method: "POST",
+        body: refresh ? { refreshToken: refresh } : {},
+        skipRefresh: true,
+      });
+      captureTokens(data, Boolean(localStorage.getItem("eunik_refresh")));
       return data.user;
     } catch {
+      clearAuthTokens();
       return null;
     }
   },
@@ -133,7 +218,11 @@ export const httpAuth = {
   },
 
   async changePassword(current: string, next: string): Promise<void> {
-    await api("/auth/change-password", { method: "POST", body: { current, next } });
+    const data = await api<AuthResponse>("/auth/change-password", {
+      method: "POST",
+      body: { current, next },
+    });
+    captureTokens(data, Boolean(localStorage.getItem("eunik_refresh")));
   },
 };
 
@@ -176,6 +265,17 @@ export const httpCategories = {
   async list() {
     const data = await api<{ categories: unknown[] }>("/categories");
     return data.categories;
+  },
+  async create(payload: Record<string, unknown>) {
+    const data = await api<{ category: unknown }>("/studio/categories", { method: "POST", body: payload });
+    return data.category;
+  },
+  async update(id: string, patch: Record<string, unknown>) {
+    const data = await api<{ category: unknown }>(`/studio/categories/${id}`, { method: "PATCH", body: patch });
+    return data.category;
+  },
+  async remove(id: string) {
+    await api(`/studio/categories/${id}`, { method: "DELETE" });
   },
 };
 
@@ -237,7 +337,7 @@ export const httpOrders = {
     address?: string;
     couponCode?: string;
   }) {
-    return api<{
+    const data = await api<{
       orderId: string;
       orderNumber: string;
       totalKobo: number;
@@ -245,7 +345,16 @@ export const httpOrders = {
       needsLogin?: boolean;
       accountCreated?: boolean;
       email?: string;
+      accessToken?: string;
+      refreshToken?: string;
     }>("/orders", { method: "POST", body: payload });
+    if (data.accessToken) {
+      setAuthTokens(
+        { access: data.accessToken, refresh: data.refreshToken },
+        { remember: false },
+      );
+    }
+    return data;
   },
   async list(params: { status?: string; page?: number } = {}) {
     const qs = new URLSearchParams();
@@ -538,6 +647,7 @@ export const httpUploads = {
     const res = await fetch(`${BASE}/uploads?folder=${folder}`, {
       method: "POST",
       credentials: "include",
+      headers: authHeaders(),
       body: form,
     });
     if (!res.ok) {

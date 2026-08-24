@@ -8,8 +8,8 @@ import { useAsync } from "@/hooks/useAsync";
 import { slugify } from "@/lib/format";
 
 export default function StudioCollections() {
-  const { data: categories, loading } = useAsync(() => db.categories.list(), []);
-  const { data: counts } = useAsync(() => db.categories.counts(), []);
+  const { data: categories, loading, reload } = useAsync(() => db.categories.list(), []);
+  const { data: counts, reload: reloadCounts } = useAsync(() => db.categories.counts(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,6 +44,7 @@ export default function StudioCollections() {
         setCreating(false);
       }
       event.currentTarget.reset();
+      await Promise.all([reload(), reloadCounts()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save collection.");
     } finally {
@@ -55,6 +56,7 @@ export default function StudioCollections() {
     try {
       await db.categories.remove(id);
       toast.message("Collection removed.");
+      await Promise.all([reload(), reloadCounts()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete.");
     }
@@ -66,7 +68,13 @@ export default function StudioCollections() {
         title="Collections"
         subtitle="Standalone rail — add, edit or delete a house collection. Not part of Content."
         actions={
-          <OsButton variant="gold" onClick={() => { setCreating(true); setEditingId(null); }}>
+          <OsButton
+            variant="gold"
+            onClick={() => {
+              setCreating(true);
+              setEditingId(null);
+            }}
+          >
             <Plus className="h-4 w-4" /> New collection
           </OsButton>
         }
@@ -77,12 +85,21 @@ export default function StudioCollections() {
             key={item.id}
             title={item.name}
             action={
-              <button type="button" className="text-sm underline" onClick={() => { setEditingId(item.id); setCreating(false); }}>
+              <button
+                type="button"
+                className="text-sm underline"
+                onClick={() => {
+                  setEditingId(item.id);
+                  setCreating(false);
+                }}
+              >
                 Edit
               </button>
             }
           >
-            <img src={item.image} alt="" className="mb-3 h-36 w-full rounded-xl object-cover" />
+            <div className="-mx-5 -mt-1 mb-3 overflow-hidden">
+              <img src={item.image} alt="" className="aspect-[4/5] w-full object-cover" />
+            </div>
             <p className="flex items-center gap-2 text-sm">
               <Layers className="h-4 w-4" /> {counts?.[item.slug] ?? 0} looks · {item.tagline}
             </p>

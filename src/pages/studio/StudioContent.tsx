@@ -156,11 +156,16 @@ function JournalManager({ posts }: { posts: Awaited<ReturnType<typeof db.content
       <SectionCard title="Magazine stories">
         <ul className="space-y-3">
           {posts.map((post) => (
-            <li key={post.id} className="flex items-center justify-between gap-3">
-              <span className="text-ink">{post.title}</span>
-              <button type="button" className="text-sm underline" onClick={() => void db.content.removeJournal(post.id).then(() => toast.message("Removed."))}>
-                Delete
-              </button>
+            <li key={post.id} className="overflow-hidden rounded-xl border border-line">
+              <div className="aspect-[16/10] w-full bg-paper">
+                <img src={post.image} alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="flex items-center justify-between gap-3 p-3">
+                <span className="text-ink">{post.title}</span>
+                <button type="button" className="text-sm underline" onClick={() => void db.content.removeJournal(post.id).then(() => toast.message("Removed."))}>
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -206,7 +211,9 @@ function LookbookManager({ items }: { items: Awaited<ReturnType<typeof db.conten
         <div className="grid grid-cols-2 gap-3">
           {items.map((item) => (
             <div key={item.id}>
-              <img src={item.image} alt="" className="h-32 w-full rounded-xl object-cover" />
+              <div className="aspect-[3/4] w-full overflow-hidden rounded-xl bg-paper">
+                <img src={item.image} alt="" className="h-full w-full object-cover" />
+              </div>
               <p className="mt-1 text-sm text-ink">{item.title}</p>
               <button type="button" className="text-xs underline" onClick={() => void db.content.removeLookbook(item.id)}>
                 Remove

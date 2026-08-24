@@ -80,19 +80,19 @@ export default function ImageUpload({
       {name ? <input type="hidden" name={name} value={preview} /> : null}
       <label
         className={`relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-line bg-paper ${
-          compact ? "h-28" : "h-44"
+          compact ? "aspect-square w-full min-h-28" : "aspect-[4/5] w-full min-h-44"
         } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
         {preview ? (
-          <img src={preview} alt="" className="h-full w-full object-cover" />
+          <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
-          <span className="flex flex-col items-center gap-1 text-sm text-muted">
+          <span className="relative z-10 flex flex-col items-center gap-1 text-sm text-muted">
             <ImagePlus className="h-5 w-5 text-ink" />
             {busy ? "Uploading…" : "Upload image"}
           </span>
         )}
         {busy ? (
-          <span className="absolute inset-0 flex items-center justify-center bg-white/70">
+          <span className="absolute inset-0 z-20 flex items-center justify-center bg-white/70">
             <Loader2 className="h-6 w-6 animate-spin text-ink" />
           </span>
         ) : null}
@@ -144,8 +144,8 @@ export function ImageUploadList({
       <p className="os-label mb-2">{label}</p>
       <div className="grid grid-cols-3 gap-2">
         {values.map((url, index) => (
-          <div key={`${url.slice(0, 48)}-${index}`} className="relative">
-            <img src={url} alt="" className="h-24 w-full rounded-xl object-cover" />
+          <div key={`${url.slice(0, 48)}-${index}`} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-paper">
+            <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" />
             <button
               type="button"
               className="absolute right-1 top-1 rounded-full bg-ink p-1 text-white"
@@ -157,7 +157,7 @@ export function ImageUploadList({
           </div>
         ))}
         <label
-          className={`flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-paper text-xs text-ink ${
+          className={`flex aspect-[3/4] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-paper text-xs text-ink ${
             busy ? "pointer-events-none opacity-70" : ""
           }`}
         >

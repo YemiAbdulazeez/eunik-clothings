@@ -51,11 +51,21 @@ export default function ProfileForm({ user }: { user: PublicUser }) {
   async function savePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const current = String(data.get("current") ?? "");
+    const next = String(data.get("next") ?? "");
+    if (next.length < 8) {
+      toast.error("New password must be at least 8 characters.");
+      return;
+    }
+    if (current === next) {
+      toast.error("Choose a new password that is different from the current one.");
+      return;
+    }
     setBusy(true);
     try {
-      await db.auth.changePassword(String(data.get("current")), String(data.get("next")));
+      await db.auth.changePassword(current, next);
       await refresh();
-      toast.success("Password updated.");
+      toast.success("Password updated successfully.");
       event.currentTarget.reset();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not change password.");

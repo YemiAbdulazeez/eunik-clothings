@@ -78,14 +78,18 @@ export default function StudioProducts() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {(products ?? []).map((item) => (
             <Link key={item.id} to={`/studio/products/${encodeURIComponent(item.id.trim())}`}>
-              <SectionCard>
-                <img src={item.image} alt="" className="mb-3 h-40 w-full rounded-xl object-cover" />
-                <p className="os-label">{item.sku}</p>
-                <p className="font-alt text-lg text-ink">{item.name}</p>
-                <p className="mt-1 text-sm">
-                  {item.priceOnRequest ? "Request for price" : formatNaira(item.priceKobo)}
-                </p>
-                <StatusBadge label={item.status} tone={statusTone(item.status)} />
+              <SectionCard className="overflow-hidden p-0">
+                <div className="aspect-[3/4] w-full overflow-hidden bg-paper">
+                  <img src={item.image} alt="" className="h-full w-full object-cover" />
+                </div>
+                <div className="space-y-1 p-5">
+                  <p className="os-label">{item.sku}</p>
+                  <p className="font-alt text-lg text-ink">{item.name}</p>
+                  <p className="mt-1 text-sm">
+                    {item.priceOnRequest ? "Request for price" : formatNaira(item.priceKobo)}
+                  </p>
+                  <StatusBadge label={item.status} tone={statusTone(item.status)} />
+                </div>
               </SectionCard>
             </Link>
           ))}

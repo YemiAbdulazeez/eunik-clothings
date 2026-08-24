@@ -820,14 +820,14 @@ export const db = {
     async featured() {
       if (HTTP_ENABLED) {
         const products = (await httpProducts.list()) as Product[];
-        return products
-          .filter((item) => item.featuredRank > 0)
-          .sort((a, b) => a.featuredRank - b.featuredRank);
+        // Public list is newest-first; show the latest looks on the front page
+        return products.slice(0, 8);
       }
       await delay();
-      return getState()
-        .products.filter((item) => item.featuredRank > 0)
-        .sort((a, b) => a.featuredRank - b.featuredRank);
+      return [...getState().products]
+        .filter((item) => item.status === "live")
+        .reverse()
+        .slice(0, 8);
     },
     async listAll() {
       if (HTTP_ENABLED) return (await httpProducts.listAll()) as Product[];
@@ -999,6 +999,16 @@ export const db = {
       return map;
     },
     async create(input: { name: string; tagline: string; slug: string; image: string; heroImage?: string }) {
+      if (HTTP_ENABLED) {
+        return (await httpCategories.create({
+          name: input.name,
+          tagline: input.tagline,
+          slug: input.slug,
+          image: input.image,
+          heroImage: input.heroImage,
+          homeTileImage: input.image,
+        })) as Category;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "add a collection", "collections");
       const slug = input.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-");
@@ -1023,6 +1033,9 @@ export const db = {
       id: string,
       patch: Partial<Pick<Category, "name" | "tagline" | "image" | "heroImage" | "homeTileImage">>,
     ) {
+      if (HTTP_ENABLED) {
+        return (await httpCategories.update(id, patch)) as Category;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "edit a collection", "collections");
       mutate((draft) => {
@@ -1033,6 +1046,10 @@ export const db = {
       return getState().categories.find((item) => item.id === id)!;
     },
     async remove(id: string) {
+      if (HTTP_ENABLED) {
+        await httpCategories.remove(id);
+        return;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager"], "delete a collection", "collections");
       const category = getState().categories.find((item) => item.id === id);
