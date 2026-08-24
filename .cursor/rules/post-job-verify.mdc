@@ -1,0 +1,16 @@
+---
+description: After any coding job, run npm audit, typecheck, and build in touched packages
+alwaysApply: true
+---
+
+# Post-job verification
+
+After finishing any coding job that changes code in this workspace (frontend `EUNIK` and/or `backend-eunik`):
+
+1. Run **`npm audit`** in each package you changed.
+2. Run **typecheck** (`npx tsc -b` / `npx tsc --noEmit`, or the package’s typecheck script).
+3. Run **`npm run build`** in each package you changed.
+
+Fix any failures before considering the job done. Report the results briefly (pass/fail; note high/critical audit findings).
+
+Do not skip these steps unless the user explicitly says to skip verification.

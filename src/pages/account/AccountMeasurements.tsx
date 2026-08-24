@@ -61,7 +61,9 @@ export default function AccountMeasurements() {
         <OsButton
           className="mt-4"
           variant="ghost"
-          onClick={() => toast.message("Profiles are written on the floor, then frozen onto the order.")}
+          onClick={() => {
+            toast.message("Profiles are written on the floor, then frozen onto the order.");
+          }}
         >
           How freeze works
         </OsButton>
