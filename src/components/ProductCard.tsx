@@ -72,10 +72,10 @@ export default function ProductCard({ product }: { product: Product }) {
   ) : null;
 
   const media = (
-    <div className="relative mb-5 overflow-hidden bg-paper">
+    <div className="relative mb-3 overflow-hidden bg-paper sm:mb-5">
       <Link to={href} className="block">
         <ProductImageSlider images={gallery} alt={product.name} />
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-ink">
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ink sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-[11px]">
           {product.sku}
         </span>
       </Link>
@@ -98,10 +98,10 @@ export default function ProductCard({ product }: { product: Product }) {
           {whatsAppButton}
         </div>
       ) : null}
-      <Link to={href} className="font-alt text-[19px] font-medium text-ink hover:text-ink/70">
+      <Link to={href} className="font-alt text-base font-medium text-ink hover:text-ink/70 sm:text-[19px]">
         {product.name}
       </Link>
-      <p className="mt-1 text-sm text-ink">
+      <p className="mt-1 text-xs text-ink sm:text-sm">
         {product.priceOnRequest ? "Request for price" : formatNaira(product.priceKobo)}
       </p>
     </article>

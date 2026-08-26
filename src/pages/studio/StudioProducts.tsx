@@ -150,26 +150,8 @@ function ProductForm({
 
   useEffect(() => {
     if (!isNew || existing) return;
-    let alive = true;
-    void db.products
-      .listAll()
-      .catch(() => db.products.list())
-      .then((list) => {
-        if (!alive) return;
-        const ranks = list.map((item) => item.featuredRank).filter((rank) => rank > 0);
-        const next = ranks.length ? Math.max(...ranks) + 1 : 1;
-        setPosition(next);
-        setPositionHint(`Suggested next slot: ${next}`);
-      })
-      .catch(() => {
-        if (alive) {
-          setPosition(1);
-          setPositionHint("Position 1 = first on the shop.");
-        }
-      });
-    return () => {
-      alive = false;
-    };
+    setPosition(0);
+    setPositionHint("Leave 0 for newest-first. Set 6 to force this look into the 6th slot.");
   }, [isNew, existing]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -312,7 +294,7 @@ function ProductForm({
                 />
               </Field>
             ) : null}
-            <Field label="Shop position">
+            <Field label="Home / shop position">
               <input
                 name="featuredRank"
                 type="number"
@@ -323,8 +305,9 @@ function ProductForm({
                 className={inputClass}
               />
               <p className="mt-1 text-xs text-muted">
-                1 = first on the shop, 2 = second, and so on. Use 0 to place after all positioned looks.
-                Claiming a slot bumps other looks at that position or below.
+                New looks appear first by date. Set a number to pin this look into that slot
+                (e.g. 6 = sixth on home and shop), even if it is brand new. Use 0 for natural
+                newest-first order. Claiming a slot bumps other pinned looks at that position or below.
                 {positionHint ? ` ${positionHint}` : ""}
               </p>
             </Field>

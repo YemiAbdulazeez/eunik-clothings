@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CreditCard, Headphones, Package, RefreshCw } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+// import { CreditCard, Headphones, Package, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import LazyImage from "@/components/LazyImage";
 import ProductGrid from "@/components/ProductGrid";
@@ -17,7 +18,7 @@ export default function Home() {
   const { data: coupon } = useAsync(() => db.content.coupon(promoCode), [promoCode]);
   const { data: journal } = useAsync(() => db.content.journal(), []);
   const { data: lookbook } = useAsync(() => db.content.lookbook(), []);
-  const { data: settings } = useAsync(() => db.settings.get(), []);
+  // const { data: settings } = useAsync(() => db.settings.get(), []);
 
   const slides = homepage?.hero ?? [];
   const active = slides[slide] ?? slides[0];
@@ -32,15 +33,15 @@ export default function Home() {
     homepage?.showPromo && coupon?.active && new Date(coupon.expiresAt).getTime() > Date.now(),
   );
 
-  const perks = useMemo(
-    () => [
-      { icon: Package, title: "Pickup in Ibadan", text: settings?.pickupLocation ? settings.pickupLocation : "Collect at Eunik HQ" },
-      { icon: RefreshCw, title: "30 days of free amendment", text: "Services time guarantee" },
-      { icon: CreditCard, title: "Secure payment", text: "100% protected payment" },
-      { icon: Headphones, title: "Online support", text: settings?.pickupLocation ? `${settings.pickupLocation} desk` : "24/7 days a week support" },
-    ],
-    [settings?.pickupLocation],
-  );
+  // const perks = useMemo(
+  //   () => [
+  //     { icon: Package, title: "Pickup in Ibadan", text: settings?.pickupLocation ? settings.pickupLocation : "Collect at Eunik HQ" },
+  //     { icon: RefreshCw, title: "30 days of free amendment", text: "Services time guarantee" },
+  //     { icon: CreditCard, title: "Secure payment", text: "100% protected payment" },
+  //     { icon: Headphones, title: "Online support", text: settings?.pickupLocation ? `${settings.pickupLocation} desk` : "24/7 days a week support" },
+  //   ],
+  //   [settings?.pickupLocation],
+  // );
 
   const marquee = useMemo(() => {
     const items = [
@@ -65,31 +66,34 @@ export default function Home() {
 
   return (
     <>
-      <section className="relative h-[600px] overflow-hidden sm:h-[70vh] lg:h-screen">
+      {/* Landscape on mobile (wider than tall); taller on sm+ */}
+      <section className="relative aspect-[16/9] w-full overflow-hidden sm:aspect-auto sm:h-[70vh] lg:h-screen">
         {slides.map((item, index) => (
           <div
             key={item.title}
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ${
+            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ${
               index === slide ? "opacity-100" : "opacity-0"
             }`}
             style={{ backgroundImage: `url('${item.image}')` }}
           />
         ))}
         {active ? (
-          <div className="relative z-10 flex h-full max-w-[1600px] flex-col justify-center px-4 lg:px-48">
-            <p className="animate-fade-up mb-6 font-alt text-xl text-ink">
+          <div className="relative z-10 flex h-full w-full max-w-[1600px] flex-col justify-center px-4 sm:px-8 lg:px-48">
+            {/* <p className="animate-fade-up mb-3 font-alt text-sm text-ink sm:mb-6 sm:text-xl">
               <span className="highlight">Discount on selected collection!</span>
-            </p>
-            <h1 className="font-alt text-6xl font-semibold leading-none tracking-tight text-ink sm:text-8xl lg:text-[120px]">
+            </p> */}
+            <h1 className="font-alt text-[clamp(1.25rem,5.5vw,7.5rem)] font-semibold leading-[1.05] tracking-tight text-ink sm:text-8xl sm:leading-none lg:text-[120px]">
               {active.title}
-              <span className="block font-light">{active.subtitle}</span>
+              <span className="mt-1 block text-[clamp(0.9rem,3.5vw,4.5rem)] font-light sm:mt-0 sm:text-[length:inherit]">
+                {active.subtitle}
+              </span>
             </h1>
-            <Link
+            {/* <Link
               to={active.to}
-              className="mt-10 inline-flex w-fit bg-ink px-8 py-4 text-lg text-white shadow-lg transition hover:bg-ink/90"
+              className="mt-6 inline-flex w-fit bg-ink px-6 py-3 text-base text-white shadow-lg transition hover:bg-ink/90 sm:mt-10 sm:px-8 sm:py-4 sm:text-lg"
             >
               Shop Collection
-            </Link>
+            </Link> */}
           </div>
         ) : null}
         {slides.length > 0 ? (
@@ -106,6 +110,7 @@ export default function Home() {
         ) : null}
       </section>
 
+      {/*
       <section className="mx-auto grid max-w-[1600px] gap-8 px-4 py-16 sm:grid-cols-2 lg:px-10 xl:grid-cols-4">
         {perks.map((perk) => (
           <div key={perk.title} className="flex items-center gap-5">
@@ -117,8 +122,9 @@ export default function Home() {
           </div>
         ))}
       </section>
+      */}
 
-      <section className="mx-auto max-w-[1600px] px-4 pb-4 lg:px-10">
+      <section className="mx-auto max-w-[1600px] px-4 pt-12 pb-4 lg:px-10">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="font-alt text-3xl tracking-tight text-ink md:text-4xl">
@@ -128,12 +134,12 @@ export default function Home() {
           </div>
           <Link
             to="/collection"
-            className="inline-flex items-center gap-2 rounded-full border border-ink px-6 py-2.5 text-sm text-ink transition hover:bg-ink hover:text-white"
+            className="hidden items-center gap-2 rounded-full border border-ink px-6 py-2.5 text-sm text-ink transition hover:bg-ink hover:text-white sm:inline-flex"
           >
             View more <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
           {latestCollections.map((category) => (
             <div key={category.slug} className="collection-card relative overflow-hidden">
               <Link to={category.path} className="block overflow-hidden">
@@ -143,17 +149,25 @@ export default function Home() {
                   className="aspect-[3/4] w-full object-cover transition duration-700"
                 />
               </Link>
-              <span className="absolute right-5 top-5 rounded-full border border-black/15 px-3 py-0.5 text-[11px] font-medium uppercase text-ink">
+              <span className="absolute right-2 top-2 rounded-full border border-black/15 px-2 py-0.5 text-[9px] font-medium uppercase text-ink sm:right-5 sm:top-5 sm:px-3 sm:text-[11px]">
                 {padCount(counts?.[category.slug] ?? 0)} items
               </span>
               <Link
                 to={category.path}
-                className="absolute bottom-10 left-1/2 min-w-[150px] -translate-x-1/2 rounded-full bg-white px-8 py-3 text-center text-lg font-alt shadow-lg"
+                className="absolute bottom-4 left-1/2 min-w-0 max-w-[90%] -translate-x-1/2 rounded-full bg-white px-3 py-2 text-center text-sm font-alt shadow-lg sm:bottom-10 sm:min-w-[150px] sm:px-8 sm:py-3 sm:text-lg"
               >
                 {category.slug === "senator" ? "Men's Senator" : category.name}
               </Link>
             </div>
           ))}
+        </div>
+        <div className="mt-6 flex justify-center sm:hidden">
+          <Link
+            to="/collection"
+            className="inline-flex items-center gap-2 rounded-full border border-ink px-6 py-2.5 text-sm text-ink transition hover:bg-ink hover:text-white"
+          >
+            View more <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
@@ -257,7 +271,7 @@ export default function Home() {
               {(homepage?.magazineTitle ?? "Eunik magazine").split(" ").slice(1).join(" ") || "magazine"}
             </span>
           </h2>
-          <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:gap-10 xl:grid-cols-4">
             {magazine.map((post) => (
               <article key={post.id}>
                 <Link to={`/journal/${post.slug}`}>
@@ -265,10 +279,10 @@ export default function Home() {
                     src={post.image}
                     alt=""
                     className="aspect-[4/5] w-full object-cover"
-                    aspectClassName="mb-6 aspect-[4/5] w-full"
+                    aspectClassName="mb-3 aspect-[4/5] w-full sm:mb-6"
                   />
                 </Link>
-                <p className="mb-2 text-sm">
+                <p className="mb-2 text-xs sm:text-sm">
                   By <span className="font-medium text-ink">{post.author}</span>
                   <span className="ml-2 text-muted">
                     {new Date(post.date).toLocaleDateString("en-GB", {
@@ -279,7 +293,9 @@ export default function Home() {
                   </span>
                 </p>
                 <Link to={`/journal/${post.slug}`}>
-                  <h3 className="font-alt text-xl leading-7 font-medium text-ink hover:underline">{post.title}</h3>
+                  <h3 className="font-alt text-base leading-6 font-medium text-ink hover:underline sm:text-xl sm:leading-7">
+                    {post.title}
+                  </h3>
                 </Link>
               </article>
             ))}

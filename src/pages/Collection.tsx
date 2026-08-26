@@ -12,7 +12,7 @@ export default function Collection() {
     <>
       <PageHero title="Collections" crumb="Collection" trail={[{ label: "Collection" }]} />
       <section className="mx-auto max-w-6xl px-6 py-8 pb-20">
-        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-8 md:grid-cols-2 xl:grid-cols-3">
           {(categories ?? []).map((category) => (
             <div key={category.slug} className="collection-card relative overflow-hidden">
               <Link to={category.path}>
@@ -22,12 +22,12 @@ export default function Collection() {
                   className="aspect-[3/4] w-full object-cover transition duration-700"
                 />
               </Link>
-              <span className="absolute right-5 top-5 rounded-full border border-black/15 px-3 py-0.5 text-[11px] font-medium uppercase text-ink">
+              <span className="absolute right-2 top-2 rounded-full border border-black/15 px-2 py-0.5 text-[9px] font-medium uppercase text-ink sm:right-5 sm:top-5 sm:px-3 sm:text-[11px]">
                 {padCount(counts?.[category.slug] ?? 0)} items
               </span>
               <Link
                 to={category.path}
-                className="absolute bottom-10 left-1/2 min-w-[150px] -translate-x-1/2 rounded-full bg-white px-8 py-3 text-center text-lg font-alt shadow-lg"
+                className="absolute bottom-4 left-1/2 min-w-0 max-w-[90%] -translate-x-1/2 rounded-full bg-white px-3 py-2 text-center text-sm font-alt shadow-lg sm:bottom-10 sm:min-w-[150px] sm:px-8 sm:py-3 sm:text-lg"
               >
                 {category.name}
               </Link>

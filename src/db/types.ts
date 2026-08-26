@@ -132,6 +132,8 @@ export type Product = {
   colour: string;
   fabricLabel: string;
   priceOnRequest?: boolean;
+  /** ISO timestamp — used for newest-first shop/home ordering. */
+  createdAt?: string;
   /** Present on PDP / studio product payloads when API returns stock sizes. */
   variants?: ProductVariant[];
 };

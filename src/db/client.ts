@@ -4,6 +4,7 @@ import { createSeed } from "./seed";
 import { ATELIER_ROLES, landingPath, readSession, writeSession } from "./session";
 import { canSeeSection, defaultNav, isHouseStaff } from "../lib/rbac";
 import { emitCartChange } from "../lib/cartEvents";
+import { arrangeByNewestWithPins } from "../lib/productOrder";
 import {
   HTTP_ENABLED,
   httpAuth,
@@ -845,11 +846,13 @@ export const db = {
       const sort = filter?.sort ?? "featured";
       if (sort === "price_asc") list = [...list].sort((a, b) => a.priceKobo - b.priceKobo);
       else if (sort === "price_desc") list = [...list].sort((a, b) => b.priceKobo - a.priceKobo);
-      else if (sort === "newest") list = [...list].reverse();
-      else list = [...list].sort((a, b) => {
-        if (Boolean(a.featuredRank) !== Boolean(b.featuredRank)) return a.featuredRank ? -1 : 1;
-        return (a.featuredRank || 99) - (b.featuredRank || 99);
-      });
+      else if (sort === "newest") {
+        list = [...list].sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+      } else list = arrangeByNewestWithPins(list);
       return list;
     },
     async getBySlug(slug: string) {
@@ -869,14 +872,12 @@ export const db = {
     async featured(limit = 20) {
       if (HTTP_ENABLED) {
         const products = (await httpProducts.list()) as Product[];
-        // Public list is newest-first
         return products.slice(0, limit);
       }
       await delay();
-      return [...getState().products]
-        .filter((item) => item.status === "live")
-        .reverse()
-        .slice(0, limit);
+      return arrangeByNewestWithPins(
+        getState().products.filter((item) => item.status === "live"),
+      ).slice(0, limit);
     },
     async listAll() {
       if (HTTP_ENABLED) return (await httpProducts.listAll()) as Product[];
