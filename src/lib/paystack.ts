@@ -12,12 +12,17 @@ export type PaystackResult = {
 /**
  * Opens Paystack Inline when API + public key are available.
  * Falls back to local demo complete when offline/demo mode.
+ * Pass accessCode + reference when paying via a public quote token (already initialized).
  */
 export async function openPaystackCheckout(opts: {
   orderId: string;
   email: string;
   amountKobo: number;
   type?: "deposit" | "balance" | "full";
+  accessCode?: string;
+  reference?: string;
+  /** Skip auth verify — use public quote token verify instead */
+  verifyWithToken?: string;
 }): Promise<PaystackResult> {
   const type = opts.type ?? "full";
 
@@ -27,7 +32,10 @@ export async function openPaystackCheckout(opts: {
     return { reference: init.reference, demo: true };
   }
 
-  const { accessCode, reference } = await httpPayments.initializePaystack(opts.orderId, type);
+  const { accessCode, reference } =
+    opts.accessCode && opts.reference
+      ? { accessCode: opts.accessCode, reference: opts.reference }
+      : await httpPayments.initializePaystack(opts.orderId, type);
 
   await new Promise<void>((resolve, reject) => {
     const popup = new PaystackPop();
@@ -38,6 +46,11 @@ export async function openPaystackCheckout(opts: {
     });
   });
 
-  await httpPayments.verifyPaystack(reference);
+  if (opts.verifyWithToken) {
+    const { httpRfpQuote } = await import("@/api/http");
+    await httpRfpQuote.verify(opts.verifyWithToken, reference);
+  } else {
+    await httpPayments.verifyPaystack(reference);
+  }
   return { reference, demo: false };
 }

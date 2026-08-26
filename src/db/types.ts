@@ -132,6 +132,8 @@ export type Product = {
   colour: string;
   fabricLabel: string;
   priceOnRequest?: boolean;
+  /** Present on PDP / studio product payloads when API returns stock sizes. */
+  variants?: ProductVariant[];
 };
 
 export type ProductVariant = {
@@ -167,6 +169,7 @@ export type CartLine = {
   qty: number;
   /** Present when cart comes from the live API */
   priceKobo?: number;
+  priceOnRequest?: boolean;
   name?: string;
   image?: string;
   sku?: string;
@@ -204,6 +207,7 @@ export type CustomDesignRequest = {
   consultation: string;
   status: "new" | "quoted" | "closed";
   createdAt: string;
+  orderId?: string | null;
 };
 
 export type Quotation = {
@@ -211,11 +215,13 @@ export type Quotation = {
   number: string;
   customerId: string;
   requestId?: string;
+  orderId?: string | null;
   description: string;
   totalKobo: number;
   depositKobo: number;
   status: "sent" | "accepted" | "rejected" | "declined" | "expired";
   createdAt: string;
+  payToken?: string | null;
 };
 
 export type Order = {
@@ -243,6 +249,12 @@ export type Order = {
   createdAt: string;
   measurementSnapshot?: Record<string, number>;
   items?: OrderItem[];
+  /** Floor board stage when a production ticket exists — shown as status in studio */
+  productionStage?: ProductionStage | null;
+  /** Catalogue / guest request-for-price order awaiting house quote */
+  priceOnRequest?: boolean;
+  quoteStatus?: Quotation["status"] | null;
+  quoteNumber?: string | null;
 };
 
 export type OrderItem = {
@@ -269,10 +281,19 @@ export type Payment = {
   status: PaymentStatus;
   paystackReference?: string;
   transactionNumber?: string;
+  /** Cloudinary / hosted receipt URL (preferred). */
+  receiptUrl?: string;
+  /** Legacy alias for receiptUrl (local demo data URLs). */
   receiptDataUrl?: string;
   submittedAt: string;
   verifiedBy?: string;
   rejectionReason?: string;
+  orderNumber?: string;
+  customerName?: string;
+  customerEmail?: string;
+  orderTotalKobo?: number;
+  orderPaidKobo?: number;
+  orderStatus?: string;
 };
 
 export type ProductionOrder = {
@@ -420,6 +441,8 @@ export type Settings = {
   demoMode: boolean;
   demoToday?: string;
   depositPercent: number;
+  /** When false, checkout shows bank transfer only (launch without live Paystack keys). */
+  paystackEnabled: boolean;
   pickupLocation: string;
   aboutJoinLine: string;
   bank: {

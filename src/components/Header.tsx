@@ -7,7 +7,6 @@ import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { landingPath } from "@/db/session";
-import { formatNaira } from "@/lib/money";
 
 const leftLinks = [
   { to: "/", label: "Home" },
@@ -74,7 +73,6 @@ export default function Header() {
   const accountTo = user ? landingPath(user) : "/account/login";
   const staff = Boolean(user && user.role !== "client");
   const accountLabel = staff ? "House" : "My account";
-  const freeShip = settings ? formatNaira(settings.freeShippingKobo) : "₦100,000";
   const instagram = settings?.instagram;
 
   async function signOut() {
@@ -92,7 +90,7 @@ export default function Header() {
   return (
     <header className="relative z-40">
       <div className="flex h-10 items-center justify-center bg-gold px-4 text-center text-[10px] font-medium uppercase tracking-wide text-ink lg:text-[13px]">
-        <span>Enjoy FREE standard delivery on orders over {freeShip}.</span>
+        <span>Pickup at Eunik HQ, Ibadan · Delivery across Nigeria</span>
         <NavLink
           to="/shop"
           className="ml-1.5 font-semibold underline decoration-ink/40 underline-offset-4 hover:decoration-ink"

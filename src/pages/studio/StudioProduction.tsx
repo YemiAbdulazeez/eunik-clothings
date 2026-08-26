@@ -29,7 +29,8 @@ export default function StudioProduction() {
     const role = user?.role ?? "manager";
     const next = nextLegalStage(stage, role) ?? nextStage(stage);
     await db.production.moveStage(id, next);
-    toast.success(`Moved to ${statusLabel(next)}`);
+    toast.success(`Moved to ${statusLabel(next)} — client emailed.`);
+    await reloadBoard();
   }
 
   const columns: { id: string; label: string; stages: ProductionStage[] }[] = [
@@ -78,7 +79,14 @@ export default function StudioProduction() {
                       <select
                         className="mt-2 w-full rounded-lg border border-line px-2 py-1 text-xs"
                         defaultValue={item.assigneeId}
-                        onChange={(event) => void db.production.assignTask(item.id, event.target.value)}
+                        onChange={(event) => {
+                          void db.production
+                            .assignTask(item.id, event.target.value)
+                            .then(() => toast.success("Assignee updated."))
+                            .catch((error) =>
+                              toast.error(error instanceof Error ? error.message : "Could not assign."),
+                            );
+                        }}
                       >
                         {staff.map((person) => (
                           <option key={person.id} value={person.id}>

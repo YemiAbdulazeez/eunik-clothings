@@ -16,9 +16,14 @@ const CLIENT_STEPS: StepDef[] = [
     detail: "We’re waiting for your Paystack payment or bank transfer to clear.",
   },
   {
-    keys: ["confirmed", "processing"],
+    keys: ["confirmed"],
     label: ORDER_STATUS_LABEL.confirmed,
     detail: "Payment received. The house is preparing your order.",
+  },
+  {
+    keys: ["processing"],
+    label: ORDER_STATUS_LABEL.processing,
+    detail: "Your look is being prepared in the house before it hits the floor.",
   },
   {
     keys: ["production"],
@@ -91,11 +96,18 @@ function stepIndex(steps: readonly StepDef[], value: string | undefined): number
   return found === -1 ? 0 : found;
 }
 
-function resolveSteps(status: OrderStatus, stage: ProductionStage | null | undefined, kind: string) {
-  const onFloor = kind !== "ready_to_wear" && Boolean(stage) && status === "production";
-  const steps = onFloor ? ATELIER_STEPS : CLIENT_STEPS;
-  const current = onFloor ? stepIndex(ATELIER_STEPS, stage ?? undefined) : stepIndex(CLIENT_STEPS, status);
-  return { steps, current, onFloor };
+function resolveSteps(status: OrderStatus, stage: ProductionStage | null | undefined, _kind: string) {
+  // Prefer floor stages while the order is actively in the atelier (any kind with a ticket).
+  const floorActive =
+    Boolean(stage) &&
+    (status === "production" || status === "processing") &&
+    stage !== "ready" &&
+    stage !== "completed";
+  const steps = floorActive ? ATELIER_STEPS : CLIENT_STEPS;
+  const current = floorActive
+    ? stepIndex(ATELIER_STEPS, stage ?? undefined)
+    : stepIndex(CLIENT_STEPS, status);
+  return { steps, current, onFloor: floorActive };
 }
 
 export function trackingHeadline(status: OrderStatus, stage?: ProductionStage | null, kind = "ready_to_wear") {

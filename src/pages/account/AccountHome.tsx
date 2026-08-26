@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import ProductImageSlider, { productGallery } from "@/components/ProductImageSlider";
 import { DashNavGrid, NeedAttention, PageHeader, PageLoading, ProgressBar, SectionCard, StatCard, StatusBadge } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
@@ -91,6 +92,8 @@ export default function AccountHome() {
     if (!waitingQuote) return;
     const order = await db.quotations.accept(waitingQuote.id);
     toast.success(`Quote accepted — order #${order.number}. Pay the deposit from Payments.`);
+    await quotesQ.reload();
+    await ordersQ.reload();
   }
 
   const attention = [
@@ -259,7 +262,9 @@ export default function AccountHome() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(featured ?? []).slice(0, 4).map((item) => (
             <Link key={item.id} to={`/account/shop/${item.sku}`} className="group">
-              <img src={item.image} alt="" className="aspect-[3/4] w-full rounded-xl object-cover" />
+              <div className="overflow-hidden rounded-xl">
+                <ProductImageSlider images={productGallery(item)} alt={item.name} />
+              </div>
               <p className="mt-2 font-medium text-ink group-hover:underline">{item.name}</p>
               <p className="text-sm">{formatNaira(item.priceKobo)}</p>
             </Link>

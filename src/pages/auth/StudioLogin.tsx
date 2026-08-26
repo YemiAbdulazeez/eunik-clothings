@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import LoadingButton from "@/components/LoadingButton";
 import { useSession } from "@/context/SessionProvider";
@@ -9,6 +9,8 @@ import { landingPath } from "@/db/session";
 export default function StudioLogin() {
   const { login } = useSession();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get("next");
   const [busy, setBusy] = useState(false);
   const chips =
     import.meta.env.DEV && !import.meta.env.VITE_API_URL
@@ -25,7 +27,8 @@ export default function StudioLogin() {
         remember: data.get("remember") === "on",
       });
       const me = await db.auth.me();
-      navigate(me ? landingPath(me) : landingPath(session.role));
+      const safeNext = next && next.startsWith("/studio") ? next : null;
+      navigate(safeNext || (me ? landingPath(me) : landingPath(session.role)));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Staff sign in failed.");
     } finally {

@@ -5,7 +5,6 @@ import LazyImage from "@/components/LazyImage";
 import ProductGrid from "@/components/ProductGrid";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
-import { formatNaira } from "@/lib/money";
 import { padCount } from "@/lib/whatsapp";
 
 export default function Home() {
@@ -14,7 +13,8 @@ export default function Home() {
   const { data: featured } = useAsync(() => db.products.featured(20), []);
   const { data: categories } = useAsync(() => db.categories.list(), []);
   const { data: counts } = useAsync(() => db.categories.counts(), []);
-  const { data: coupon } = useAsync(() => db.content.coupon("EUNIK-DEC-2024"), []);
+  const promoCode = homepage?.promoCode?.trim() || "EUNIK-DEC-2024";
+  const { data: coupon } = useAsync(() => db.content.coupon(promoCode), [promoCode]);
   const { data: journal } = useAsync(() => db.content.journal(), []);
   const { data: lookbook } = useAsync(() => db.content.lookbook(), []);
   const { data: settings } = useAsync(() => db.settings.get(), []);
@@ -31,28 +31,27 @@ export default function Home() {
   const promoLive = Boolean(
     homepage?.showPromo && coupon?.active && new Date(coupon.expiresAt).getTime() > Date.now(),
   );
-  const freeShip = settings ? formatNaira(settings.freeShippingKobo) : "₦100,000";
 
   const perks = useMemo(
     () => [
-      { icon: Package, title: "Free shipping", text: `Free shipping on orders over ${freeShip}` },
+      { icon: Package, title: "Pickup in Ibadan", text: settings?.pickupLocation ? settings.pickupLocation : "Collect at Eunik HQ" },
       { icon: RefreshCw, title: "30 days of free amendment", text: "Services time guarantee" },
       { icon: CreditCard, title: "Secure payment", text: "100% protected payment" },
       { icon: Headphones, title: "Online support", text: settings?.pickupLocation ? `${settings.pickupLocation} desk` : "24/7 days a week support" },
     ],
-    [freeShip, settings?.pickupLocation],
+    [settings?.pickupLocation],
   );
 
   const marquee = useMemo(() => {
     const items = [
       promoLive && coupon ? `Get ${coupon.percent}% off — code ${coupon.code}` : null,
       homepage?.aboutTrustLine,
-      `Free shipping for orders over ${freeShip}`,
       "Pay with Paystack or bank transfer",
+      "Pickup at Eunik HQ, Ibadan",
       homepage?.newArrivalTitle ? homepage.newArrivalTitle : null,
     ].filter(Boolean) as string[];
     return items.length ? items : ["The fashion core collection", "100% secure protected payment"];
-  }, [promoLive, coupon, homepage, freeShip]);
+  }, [promoLive, coupon, homepage]);
 
   useEffect(() => {
     if (slides.length === 0) return;

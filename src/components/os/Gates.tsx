@@ -127,8 +127,12 @@ export function AccountGate() {
 
 export function StudioGate() {
   const { user, loading } = useSession();
+  const location = useLocation();
   if (loading) return <Splash />;
-  if (!user) return <Navigate to="/studio/login" replace />;
+  if (!user) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/studio/login?next=${next}`} replace />;
+  }
   if (user.role === "client") return <Navigate to="/account" replace />;
   if (!canUseArea(user, "studio")) return <Navigate to={landingPath(user)} replace />;
   return (

@@ -36,7 +36,7 @@ export default function StudioCustom() {
     <div className="space-y-6">
       <PageHeader
         title="Custom requests"
-        subtitle="Edit the document, preview, then send. Clients accept in their book."
+        subtitle="Edit the document, preview, then send. Catalogue request-for-price orders appear here too."
         onRefresh={() => Promise.all([reload(), reloadQuotes()])}
       />
       {(requests ?? []).map((item) => {
@@ -52,6 +52,14 @@ export default function StudioCustom() {
             <p>{item.description}</p>
             <p className="mt-1 text-sm">
               Budget {item.budget} · {item.occasion} · {item.consultation}
+              {item.orderId ? (
+                <>
+                  {" · "}
+                  <Link to={`/studio/orders/${item.orderId}`} className="underline">
+                    Open order
+                  </Link>
+                </>
+              ) : null}
             </p>
             {quote ? (
               <div className="mt-3 rounded-xl border border-line px-4 py-3 text-sm">

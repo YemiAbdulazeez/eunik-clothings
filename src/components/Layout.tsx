@@ -41,7 +41,9 @@ export default function Layout() {
       </main>
       {showDemoBanner ? (
         <p className="bg-paper py-1 text-center text-[11px] uppercase tracking-wide text-ink">
-          Presentation store — no live charges — data stays in this browser.
+          {apiConfigured
+            ? "Presentation mode — catalogue and orders use the live house database."
+            : "Presentation store — no live charges — data stays in this browser."}
         </p>
       ) : null}
       <Footer />

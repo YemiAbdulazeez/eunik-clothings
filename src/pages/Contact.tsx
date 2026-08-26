@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import PageHero from "../components/PageHero";
 import { db } from "@/db/database";
+import { HTTP_ENABLED } from "@/api/http";
 import { useAsync } from "@/hooks/useAsync";
 
 export default function Contact() {
@@ -34,7 +35,11 @@ export default function Contact() {
       setSent(true);
       toast.success("Received at the house.");
       form.reset();
-    } catch {
+    } catch (error) {
+      if (HTTP_ENABLED) {
+        toast.error(error instanceof Error ? error.message : "Could not send your message.");
+        return;
+      }
       const mailto = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
         `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`,
       )}`;

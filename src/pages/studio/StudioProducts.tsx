@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload, { ImageUploadList } from "@/components/os/ImageUpload";
+import ProductImageSlider, { productGallery } from "@/components/ProductImageSlider";
 import { EmptyState, Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -80,11 +81,12 @@ export default function StudioProducts() {
           {(products ?? []).map((item) => (
             <Link key={item.id} to={`/studio/products/${encodeURIComponent(item.id.trim())}`}>
               <SectionCard className="overflow-hidden p-0">
-                <div className="aspect-[3/4] w-full overflow-hidden bg-paper">
-                  <img src={item.image} alt="" className="h-full w-full object-cover" />
-                </div>
+                <ProductImageSlider images={productGallery(item)} alt={item.name} />
                 <div className="space-y-1 p-5">
-                  <p className="os-label">{item.sku}</p>
+                  <p className="os-label">
+                    {item.sku}
+                    {item.featuredRank > 0 ? ` · #${item.featuredRank}` : ""}
+                  </p>
                   <p className="font-alt text-lg text-ink">{item.name}</p>
                   <p className="mt-1 text-sm">
                     {item.priceOnRequest ? "Request for price" : formatNaira(item.priceKobo)}
@@ -121,6 +123,10 @@ function ProductForm({
   const [category, setCategory] = useState(existing?.category ?? categories[0]?.slug ?? "");
   const [sku, setSku] = useState(existing?.sku ?? "");
   const [skuBusy, setSkuBusy] = useState(false);
+  const [position, setPosition] = useState(
+    existing?.featuredRank && existing.featuredRank > 0 ? existing.featuredRank : 0,
+  );
+  const [positionHint, setPositionHint] = useState("");
 
   useEffect(() => {
     if (!isNew || !category) return;
@@ -141,6 +147,30 @@ function ProductForm({
       alive = false;
     };
   }, [category, isNew]);
+
+  useEffect(() => {
+    if (!isNew || existing) return;
+    let alive = true;
+    void db.products
+      .listAll()
+      .catch(() => db.products.list())
+      .then((list) => {
+        if (!alive) return;
+        const ranks = list.map((item) => item.featuredRank).filter((rank) => rank > 0);
+        const next = ranks.length ? Math.max(...ranks) + 1 : 1;
+        setPosition(next);
+        setPositionHint(`Suggested next slot: ${next}`);
+      })
+      .catch(() => {
+        if (alive) {
+          setPosition(1);
+          setPositionHint("Position 1 = first on the shop.");
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isNew, existing]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,7 +204,7 @@ function ProductForm({
         fabricLabel: String(data.get("fabricLabel")),
         sellsRtw: data.get("sellsRtw") === "on",
         sellsMtm: data.get("sellsMtm") === "on",
-        featuredRank: Number(data.get("featuredRank") || 0),
+        featuredRank: Math.max(0, Math.floor(Number(data.get("featuredRank") || position || 0))),
         status: (data.get("status") === "draft" ? "draft" : "live") as "live" | "draft",
       };
       if (existing) {
@@ -193,11 +223,18 @@ function ProductForm({
   }
 
   async function remove() {
-    if (!existing) return;
+    if (!existing || busy) return;
     if (!confirm("Delete this look from the rail?")) return;
-    await db.products.remove(existing.id);
-    toast.message("Removed.");
-    navigate("/studio/products");
+    setBusy(true);
+    try {
+      await db.products.remove(existing.id);
+      toast.message("Removed.");
+      navigate("/studio/products");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -275,8 +312,21 @@ function ProductForm({
                 />
               </Field>
             ) : null}
-            <Field label="Featured rank (0 = off)">
-              <input name="featuredRank" type="number" defaultValue={existing?.featuredRank ?? 0} className={inputClass} />
+            <Field label="Shop position">
+              <input
+                name="featuredRank"
+                type="number"
+                min={0}
+                step={1}
+                value={position}
+                onChange={(event) => setPosition(Math.max(0, Math.floor(Number(event.target.value) || 0)))}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-muted">
+                1 = first on the shop, 2 = second, and so on. Use 0 to place after all positioned looks.
+                Claiming a slot bumps other looks at that position or below.
+                {positionHint ? ` ${positionHint}` : ""}
+              </p>
             </Field>
             <div className="md:col-span-2">
               <Field label="Short line">
@@ -310,7 +360,7 @@ function ProductForm({
               {existing ? "Save look" : "Add look"}
             </OsButton>
             {existing && canDelete ? (
-              <OsButton variant="danger" onClick={() => remove()}>
+              <OsButton variant="danger" loading={busy} loadingText="Deleting…" onClick={() => remove()}>
                 Delete
               </OsButton>
             ) : null}

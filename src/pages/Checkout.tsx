@@ -22,16 +22,18 @@ export default function Checkout() {
   const [fulfillment, setFulfillment] = useState<"pickup_ibadan" | "delivery">("pickup_ibadan");
   const [agreedPolicies, setAgreedPolicies] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [payMode, setPayMode] = useState<"deposit" | "full">("deposit");
   const totals = cart ? db.cart.totals(cart) : { subtotal: 0, discount: 0, payable: 0 };
   const { data: shipping } = useAsync(
     () => db.checkout.quoteShipping(fulfillment, totals.payable),
     [fulfillment, totals.payable],
   );
-  const hasMtm = cart?.lines.some((line) => line.kind === "mtm") ?? false;
-  const depositPercent = settings?.depositPercent ?? 50;
+  const hasPriceRequest = cart?.lines.some((line) => line.priceOnRequest) ?? false;
   const merchandise = totals.payable + (shipping ?? 0);
-  // MTM: show deposit due now (matches what Paystack/transfer will charge after place-order)
-  const amount = hasMtm ? Math.ceil((merchandise * depositPercent) / 100) : merchandise;
+  const depositPercent = Math.min(100, Math.max(70, settings?.depositPercent ?? 70));
+  const depositAmount = merchandise > 0 ? Math.min(merchandise, Math.ceil((merchandise * depositPercent) / 100)) : 0;
+  const amount = merchandise <= 0 ? 0 : payMode === "deposit" ? depositAmount : merchandise;
+  const balanceIfDeposit = Math.max(0, merchandise - depositAmount);
 
   useEffect(() => {
     if (cart?.lines.length) trackEvent("begin_checkout", { path: "/checkout" });
@@ -79,28 +81,58 @@ export default function Checkout() {
         await refreshCart();
 
         const orderId = placed.orderId;
-        const payAmount = hasMtm ? placed.depositKobo : placed.totalKobo;
-        if (choice.method === "paystack") {
-          const result = await openPaystackCheckout({
-            orderId,
-            email,
-            amountKobo: payAmount,
-            type: hasMtm ? "deposit" : "full",
-          });
-          toast.success(result.demo ? "Demo Paystack recorded." : "Payment successful.");
+        const payType = payMode === "deposit" ? "deposit" : "full";
+        const payAmount = payMode === "deposit" ? placed.depositKobo : placed.totalKobo;
+        if (payAmount > 0) {
+          if (choice.method === "paystack") {
+            const result = await openPaystackCheckout({
+              orderId,
+              email,
+              amountKobo: payAmount,
+              type: payType,
+            });
+            toast.success(
+              result.demo
+                ? "Demo Paystack recorded."
+                : payType === "deposit"
+                  ? "Minimum payment received — balance is due before delivery."
+                  : "Payment successful.",
+            );
+          } else {
+            await httpPayments.submitTransfer({
+              orderId,
+              transactionNumber: choice.transactionNumber,
+              receiptUrl: choice.receiptUrl,
+              type: payType,
+            });
+            toast.success("Transfer submitted — waiting for house confirmation.");
+          }
         } else {
-          await httpPayments.submitTransfer({
-            orderId,
-            transactionNumber: choice.transactionNumber,
-            receiptUrl: choice.receiptDataUrl,
-            type: hasMtm ? "deposit" : "full",
-          });
-          toast.success("Receipt sent to the house.");
+          toast.success(
+            hasPriceRequest
+              ? "Order placed — the house will confirm pricing and email you."
+              : "Order placed.",
+          );
         }
         if ("accountCreated" in placed && placed.accountCreated) {
           toast.message("We emailed your temporary password — it stays valid until you change it from Profile.");
         }
         await refreshCart();
+        try {
+          sessionStorage.setItem(
+            `eunik-thanks-${orderId}`,
+            JSON.stringify({
+              totalKobo: placed.totalKobo,
+              depositKobo: placed.depositKobo,
+              paidTowardKobo: payAmount > 0 ? payAmount : 0,
+              payMode: payAmount > 0 ? payType : "none",
+              method: payAmount > 0 ? choice.method : "none",
+              awaitingBank: choice.method === "bank_transfer" && payAmount > 0,
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
         navigate(`/orders/thank-you/${orderId}`);
         return;
       }
@@ -219,29 +251,71 @@ export default function Checkout() {
           </label>
         </form>
         <div>
-          <p className="mb-2 font-alt text-2xl text-ink">Pay {formatNaira(amount)}</p>
-          <p className="mb-4 text-sm">
-            {hasMtm
-              ? `Made-to-measure: ${depositPercent}% deposit due now (${formatNaira(amount)}); balance before collection.`
-              : "Full amount due at checkout."}
+          <p className="mb-2 font-alt text-2xl text-ink">
+            {amount > 0 ? `Pay ${formatNaira(amount)}` : hasPriceRequest ? "Request for price" : "No payment due"}
           </p>
+          <p className="mb-4 text-sm">
+            {hasPriceRequest && merchandise === 0
+              ? "Place the order like a normal checkout. The house will confirm pricing and email you."
+              : hasPriceRequest && merchandise > 0
+                ? `Pay for priced looks now. Request-for-price looks wait for a house quote.`
+                : "Pay at least 70% now, or settle the full amount. Any balance is due before delivery."}
+          </p>
+          {merchandise > 0 ? (
+            <div className="mb-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setPayMode("deposit")}
+                className={`rounded-2xl border p-3 text-left text-sm transition-colors hover:border-ink ${payMode === "deposit" ? "border-ink bg-paper" : "border-line"}`}
+              >
+                <p className="font-medium text-ink">Pay {depositPercent}% now</p>
+                <p className="text-muted">{formatNaira(depositAmount)} · balance {formatNaira(balanceIfDeposit)} later</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayMode("full")}
+                className={`rounded-2xl border p-3 text-left text-sm transition-colors hover:border-ink ${payMode === "full" ? "border-ink bg-paper" : "border-line"}`}
+              >
+                <p className="font-medium text-ink">Pay in full</p>
+                <p className="text-muted">{formatNaira(merchandise)}</p>
+              </button>
+            </div>
+          ) : null}
           {cart?.lines.length ? (
             <ul className="mb-6 space-y-2 border border-line p-4 text-sm">
               {cart.lines.map((line) => (
                 <li key={line.id} className="flex justify-between gap-3">
                   <span>
                     {line.name ?? "Look"} × {line.qty}
+                    <span className="mt-0.5 block text-xs text-muted">
+                      {line.kind === "mtm" ? "Made to measure" : "Ready to wear"}
+                      {line.priceOnRequest ? " · Request for price" : ""}
+                    </span>
                   </span>
-                  <span>{formatNaira((line.priceKobo ?? 0) * line.qty)}</span>
+                  <span>
+                    {line.priceOnRequest ? "Request for price" : formatNaira((line.priceKobo ?? 0) * line.qty)}
+                  </span>
                 </li>
               ))}
+              {shipping != null && fulfillment === "delivery" ? (
+                <li className="flex justify-between text-muted">
+                  <span>Delivery</span>
+                  <span>{formatNaira(shipping)}</span>
+                </li>
+              ) : null}
               <li className="flex justify-between border-t border-line pt-2 font-medium text-ink">
                 <span>Subtotal</span>
-                <span>{formatNaira(totals.subtotal)}</span>
+                <span>{hasPriceRequest && totals.subtotal === 0 ? "—" : formatNaira(totals.subtotal)}</span>
               </li>
             </ul>
           ) : null}
-          <PayMethods amountKobo={amount} busy={busy} disabled={!agreedPolicies} onPay={pay} />
+          <PayMethods
+            amountKobo={Math.max(amount, 0)}
+            busy={busy}
+            disabled={!agreedPolicies}
+            onPay={pay}
+            placeOnly={amount === 0}
+          />
           {!agreedPolicies ? (
             <p className="mt-3 text-sm text-muted">Tick the policy agreement above to enable payment.</p>
           ) : null}

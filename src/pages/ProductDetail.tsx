@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import LazyImage from "@/components/LazyImage";
 import LoadingButton from "@/components/LoadingButton";
 import PageHero from "@/components/PageHero";
 import ShareBar from "@/components/ShareBar";
+import WishlistHeart from "@/components/WishlistHeart";
 import { PageSkeleton } from "@/components/Skeleton";
 import { PageHeader } from "@/components/os/ui";
 import { db } from "@/db/database";
@@ -14,22 +15,23 @@ import { formatNaira } from "@/lib/money";
 import { openProductWhatsApp } from "@/lib/whatsapp";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/context/CartProvider";
-import { inAccount, mtmHref } from "@/lib/osNav";
+import { inAccount } from "@/lib/osNav";
 import { canShop, isHouseStaff } from "@/lib/rbac";
 import { trackEvent } from "@/lib/track";
+import { statusLabel } from "@/lib/format";
 
 export default function ProductDetail() {
   const { sku = "" } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const embedded = inAccount(location.pathname);
   const { user } = useSession();
   const { refresh: refreshCart } = useCart();
   const { data: product, loading } = useAsync(() => db.products.getBySku(sku), [sku]);
-  const { data: variants } = useAsync(
-    () => (product ? db.products.variants(product.id) : Promise.resolve([])),
-    [product?.id],
-  );
+  const { data: variants } = useAsync(async () => {
+    if (!product) return [];
+    if (product.variants?.length) return product.variants;
+    return db.products.variants(product.id);
+  }, [product?.id, product?.variants]);
   const { data: reviews } = useAsync(
     () => (product ? db.reviews.forProduct(product.id) : Promise.resolve([])),
     [product?.id],
@@ -72,33 +74,26 @@ export default function ProductDetail() {
     }
     setBusy(true);
     try {
-      if (quote) {
-        toast.message("This look is request-for-price. Open a custom request or WhatsApp the house.");
-        navigate(embedded ? "/account/custom" : "/bespoke");
-        return;
-      }
       await db.cart.add({
         productId: look.id,
-        kind: kind === "preorder" || !look.sellsRtw ? "mtm" : "rtw",
+        kind: quote || kind === "preorder" || !look.sellsRtw ? "mtm" : "rtw",
         qty: 1,
-        variantId: variants?.find((item) => item.size === size)?.id,
+        variantId: quote ? undefined : variants?.find((item) => item.size === size)?.id,
       });
       await refreshCart();
       trackEvent("add_to_bag", { sku: look.sku, path: location.pathname });
-      toast.success(kind === "preorder" || out ? "Pre-order in your bag." : "Added to your bag.");
+      toast.success(
+        quote
+          ? "Request for price in your bag — checkout like a normal order."
+          : kind === "preorder" || out
+            ? "Pre-order in your bag."
+            : "Added to your bag.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");
     } finally {
       setBusy(false);
     }
-  }
-
-  function makeToMeasure() {
-    if (!user) {
-      navigate(`/account/login?next=${mtmHref(location.pathname, look.sku)}`);
-      return;
-    }
-    navigate(mtmHref(location.pathname, look.sku));
   }
 
   async function review(event: FormEvent<HTMLFormElement>) {
@@ -146,9 +141,27 @@ export default function ProductDetail() {
         ) : null}
       </div>
       <div>
-        <span className="rounded-full border border-line px-3 py-1 text-[11px] uppercase tracking-wide text-ink">
-          {look.sku}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-line px-3 py-1 text-[11px] uppercase tracking-wide text-ink">
+            {look.sku}
+          </span>
+          {look.sellsRtw ? (
+            <span className="rounded-full bg-paper px-3 py-1 text-[11px] uppercase tracking-wide text-ink">
+              {statusLabel("ready_to_wear")}
+            </span>
+          ) : null}
+          {look.sellsMtm || quote || !look.sellsRtw ? (
+            <span className="rounded-full bg-paper px-3 py-1 text-[11px] uppercase tracking-wide text-ink">
+              {statusLabel("made_to_measure")}
+            </span>
+          ) : null}
+          {quote ? (
+            <span className="rounded-full bg-gold/40 px-3 py-1 text-[11px] uppercase tracking-wide text-ink">
+              Request for price
+            </span>
+          ) : null}
+          <WishlistHeart productId={look.id} className="ml-auto" />
+        </div>
         <h1 className="mt-4 font-alt text-4xl text-ink">{look.name}</h1>
         <p className="mt-3 text-2xl font-medium text-ink">{quote ? "Request for price" : formatNaira(look.priceKobo)}</p>
         <div className="mt-4">
@@ -182,12 +195,7 @@ export default function ProductDetail() {
           ) : null}
           {canShopHere && (quote || out || !look.sellsRtw) ? (
             <LoadingButton loading={busy} loadingText="Adding…" onClick={() => void addToBag("preorder")}>
-              {quote ? "Request price / pre-order" : "Pre-order"}
-            </LoadingButton>
-          ) : null}
-          {canShopHere && look.sellsMtm ? (
-            <LoadingButton variant="gold" onClick={makeToMeasure}>
-              Make this <span className="highlight">to measure</span>
+              {quote ? "Add to bag · request price" : "Pre-order"}
             </LoadingButton>
           ) : null}
           {showWhatsApp ? (
@@ -198,13 +206,13 @@ export default function ProductDetail() {
         </div>
         {canShopHere ? (
           <p className="mt-6 text-sm">
-            Pickup at Eunik HQ, Ibadan · Free delivery over ₦100,000 ·{" "}
+            Pickup at Eunik HQ, Ibadan ·{" "}
             <Link to="/cart" className="text-ink underline">
               View bag
             </Link>
           </p>
         ) : (
-          <p className="mt-6 text-sm">Pickup at Eunik HQ, Ibadan · Free delivery over ₦100,000</p>
+          <p className="mt-6 text-sm">Pickup at Eunik HQ, Ibadan</p>
         )}
       </div>
       <div className="lg:col-span-2 space-y-4">

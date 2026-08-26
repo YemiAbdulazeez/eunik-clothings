@@ -27,6 +27,13 @@ import {
   httpAppointments,
   httpPublic,
   httpUploads,
+  httpWishlist,
+  httpMeasurements,
+  httpTickets,
+  httpReviews,
+  httpAttendance,
+  httpFittings,
+  httpAnalytics,
 } from "../api/http";
 import {
   DEMO_PASSWORD,
@@ -39,6 +46,8 @@ import {
   type CustomDesignRequest,
   type DemoChip,
   type EventItem,
+  type Fabric,
+  type Fitting,
   type Gender,
   type HomepageContent,
   type LookbookItem,
@@ -47,7 +56,9 @@ import {
   type Order,
   type Payment,
   type Product,
+  type ProductVariant,
   type ProductionStage,
+  type Coupon,
   type Role,
   type Session,
   type Settings,
@@ -55,11 +66,13 @@ import {
   type PublicUser,
   type BlogPost,
   type Review,
+  type SupportTicket,
   type AnalyticsEvent,
   type TrafficSnapshot,
   type StudioOverview,
   type Quotation,
   type AuditLog,
+  type AttendanceEvent,
   type Notification,
   type ProductionOrder,
   type DbState,
@@ -215,7 +228,7 @@ export type PlaceOrderPayload = {
   couponCode?: string;
   payment:
     | { method: "paystack" }
-    | { method: "bank_transfer"; transactionNumber: string; receiptDataUrl: string };
+    | { method: "bank_transfer"; transactionNumber: string; receiptUrl: string };
 };
 
 /** Unique ORD-###### for local/demo checkout (guests and clients). */
@@ -274,15 +287,13 @@ async function createOrderFromCart(payload: PlaceOrderPayload): Promise<Order> {
 
   const { subtotal, discount } = cartTotals({ ...cart, couponCode: payload.couponCode ?? cart.couponCode });
   const afterDiscount = subtotal - discount;
-  const shippingKobo =
-    payload.fulfillment === "pickup_ibadan" || afterDiscount >= getState().settings.freeShippingKobo
-      ? 0
-      : 3500_00;
+  const shippingKobo = payload.fulfillment === "pickup_ibadan" ? 0 : 1500_00;
   const totalKobo = afterDiscount + shippingKobo;
   const first = cart.lines[0];
   const firstProduct = getState().products.find((item) => item.id === first.productId);
   const kind = hasMtm ? "made_to_measure" : "ready_to_wear";
-  const depositKobo = hasMtm ? Math.round((totalKobo * getState().settings.depositPercent) / 100) : totalKobo;
+  const depositPercent = Math.min(100, Math.max(70, getState().settings.depositPercent || 70));
+  const depositKobo = totalKobo > 0 ? Math.min(totalKobo, Math.ceil((totalKobo * depositPercent) / 100)) : 0;
   const chargeNow = payload.payment.method === "paystack" ? depositKobo : 0;
   const lineCount = cart.lines.length;
   const summaryName =
@@ -358,8 +369,10 @@ async function createOrderFromCart(payload: PlaceOrderPayload): Promise<Order> {
         payload.payment.method === "paystack" ? `PAY_demo_${number}_${Date.now()}` : undefined,
       transactionNumber:
         payload.payment.method === "bank_transfer" ? payload.payment.transactionNumber : undefined,
+      receiptUrl:
+        payload.payment.method === "bank_transfer" ? payload.payment.receiptUrl : undefined,
       receiptDataUrl:
-        payload.payment.method === "bank_transfer" ? payload.payment.receiptDataUrl : undefined,
+        payload.payment.method === "bank_transfer" ? payload.payment.receiptUrl : undefined,
       submittedAt: nowIso(),
     };
     draft.payments.unshift(payment);
@@ -607,7 +620,19 @@ export const db = {
           email: httpUser.email,
           role: httpUser.role as Role,
           name: httpUser.name,
-          firstName: httpUser.firstName,
+          firstName: httpUser.firstName ?? httpUser.name,
+          lastName: httpUser.lastName,
+          phone: httpUser.phone ?? "",
+          city: httpUser.city ?? "",
+          gender: httpUser.gender as PublicUser["gender"],
+          address: httpUser.address,
+          birthDay: httpUser.birthDay,
+          birthMonth: httpUser.birthMonth,
+          preferredFit: httpUser.preferredFit,
+          department: httpUser.department,
+          jobTitle: httpUser.jobTitle,
+          emergencyPhone: httpUser.emergencyPhone,
+          notes: httpUser.notes,
           navSections: httpUser.navSections as NavSection[],
           mustChangePassword: httpUser.mustChangePassword,
         } as PublicUser;
@@ -765,6 +790,30 @@ export const db = {
         >
       >,
     ): Promise<PublicUser> {
+      if (HTTP_ENABLED) {
+        const httpUser = await httpAuth.updateMe(patch);
+        return {
+          id: httpUser.id,
+          email: httpUser.email,
+          role: httpUser.role as Role,
+          name: httpUser.name,
+          firstName: httpUser.firstName ?? httpUser.name,
+          lastName: httpUser.lastName,
+          phone: httpUser.phone ?? "",
+          city: httpUser.city ?? "",
+          gender: httpUser.gender as PublicUser["gender"],
+          address: httpUser.address,
+          birthDay: httpUser.birthDay,
+          birthMonth: httpUser.birthMonth,
+          preferredFit: httpUser.preferredFit,
+          department: httpUser.department,
+          jobTitle: httpUser.jobTitle,
+          emergencyPhone: httpUser.emergencyPhone,
+          notes: httpUser.notes,
+          navSections: httpUser.navSections as NavSection[],
+          mustChangePassword: httpUser.mustChangePassword,
+        } as PublicUser;
+      }
       await delay();
       const user = requireUser();
       mutate((draft) => {
@@ -975,10 +1024,18 @@ export const db = {
       audit(actor.id, "product.remove", id);
     },
     async variants(productId: string) {
+      if (HTTP_ENABLED) {
+        const fromStudio = (await httpProducts.getById(productId).catch(() => null)) as Product | null;
+        if (fromStudio?.variants?.length) return fromStudio.variants as ProductVariant[];
+        const bySku = (await httpProducts.get(productId).catch(() => null)) as Product | null;
+        if (bySku?.variants?.length) return bySku.variants as ProductVariant[];
+        return [];
+      }
       await delay(80);
       return getState().variants.filter((item) => item.productId === productId);
     },
     async fabrics() {
+      if (HTTP_ENABLED) return (await httpProducts.fabrics()) as Fabric[];
       await delay(80);
       return getState().fabrics;
     },
@@ -1022,7 +1079,14 @@ export const db = {
       }
       return map;
     },
-    async create(input: { name: string; tagline: string; slug: string; image: string; heroImage?: string }) {
+    async create(input: {
+      name: string;
+      tagline: string;
+      slug: string;
+      image: string;
+      heroImage?: string;
+      sortOrder?: number;
+    }) {
       if (HTTP_ENABLED) {
         return (await httpCategories.create({
           name: input.name,
@@ -1031,6 +1095,7 @@ export const db = {
           image: input.image,
           heroImage: input.heroImage,
           homeTileImage: input.image,
+          ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         })) as Category;
       }
       await delay();
@@ -1055,7 +1120,7 @@ export const db = {
     },
     async update(
       id: string,
-      patch: Partial<Pick<Category, "name" | "tagline" | "image" | "heroImage" | "homeTileImage">>,
+      patch: Partial<Pick<Category, "name" | "tagline" | "image" | "heroImage" | "homeTileImage" | "sortOrder">>,
     ) {
       if (HTTP_ENABLED) {
         return (await httpCategories.update(id, patch)) as Category;
@@ -1176,10 +1241,14 @@ export const db = {
     },
   },
   checkout: {
-    async quoteShipping(fulfillment: "pickup_ibadan" | "delivery", subtotalKobo: number) {
+    async quoteShipping(fulfillment: "pickup_ibadan" | "delivery", _subtotalKobo: number) {
+      if (HTTP_ENABLED) {
+        if (fulfillment === "pickup_ibadan") return 0;
+        return 1500_00;
+      }
       await delay(80);
-      if (fulfillment === "pickup_ibadan" || subtotalKobo >= getState().settings.freeShippingKobo) return 0;
-      return 3500_00;
+      if (fulfillment === "pickup_ibadan") return 0;
+      return 1500_00;
     },
     async placeOrder(payload: PlaceOrderPayload) {
       if (HTTP_ENABLED) {
@@ -1218,7 +1287,13 @@ export const db = {
   },
   payments: {
     async list() {
-      if (HTTP_ENABLED) return (await httpPayments.list()) as Payment[];
+      if (HTTP_ENABLED) {
+        const rows = (await httpPayments.list()) as Array<Payment & { receiptUrl?: string; receiptDataUrl?: string }>;
+        return rows.map((row) => {
+          const receipt = row.receiptUrl || row.receiptDataUrl;
+          return { ...row, receiptUrl: receipt, receiptDataUrl: receipt } as Payment;
+        });
+      }
       await delay();
       const user = requireUser();
       if (user.role === "client") {
@@ -1228,6 +1303,10 @@ export const db = {
       return getState().payments;
     },
     async getByOrder(orderId: string) {
+      if (HTTP_ENABLED) {
+        const rows = (await httpPayments.list()) as Payment[];
+        return rows.filter((item) => item.orderId === orderId);
+      }
       await delay(80);
       return getState().payments.filter((item) => item.orderId === orderId);
     },
@@ -1275,10 +1354,17 @@ export const db = {
     },
     async submitTransfer(
       orderId: string,
-      input: { transactionNumber: string; receiptFile?: File; receiptDataUrl?: string; amountKobo: number; type?: Payment["type"] },
+      input: {
+        transactionNumber: string;
+        receiptFile?: File;
+        receiptUrl?: string;
+        receiptDataUrl?: string;
+        amountKobo: number;
+        type?: Payment["type"];
+      },
     ) {
       if (HTTP_ENABLED) {
-        let receiptUrl = input.receiptDataUrl;
+        let receiptUrl = input.receiptUrl || input.receiptDataUrl;
         if (input.receiptFile && !receiptUrl) {
           const up = await httpUploads.upload(input.receiptFile, "receipts");
           receiptUrl = up.url;
@@ -1297,12 +1383,14 @@ export const db = {
           method: "bank_transfer",
           status: "awaiting_verification",
           transactionNumber: input.transactionNumber,
+          receiptUrl,
+          receiptDataUrl: receiptUrl,
           submittedAt: nowIso(),
         } as Payment;
       }
       await delay();
       const receipt =
-        input.receiptDataUrl ?? (input.receiptFile ? await fileToDataUrl(input.receiptFile) : "");
+        input.receiptUrl ?? input.receiptDataUrl ?? (input.receiptFile ? await fileToDataUrl(input.receiptFile) : "");
       if (!input.transactionNumber.trim() || !receipt) {
         throw new Error("Transaction number and receipt are required.");
       }
@@ -1319,8 +1407,15 @@ export const db = {
           method: "bank_transfer",
           status: "awaiting_verification",
           transactionNumber: input.transactionNumber.trim(),
+          receiptUrl: receipt,
           receiptDataUrl: receipt,
           submittedAt: nowIso(),
+          orderNumber: order.number,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          orderTotalKobo: order.totalKobo,
+          orderPaidKobo: order.paidKobo,
+          orderStatus: order.status,
         };
         draft.payments.unshift(payment);
         order.status = "awaiting_transfer";
@@ -1372,7 +1467,10 @@ export const db = {
       if (HTTP_ENABLED) return (await httpOrders.list()) as Order[];
       await delay();
       assertRoles(["super_admin", "manager", "desk", "finance", "designer"], "list all orders", "orders");
-      return getState().orders;
+      return getState().orders.map((order) => {
+        const prod = getState().productionOrders.find((item) => item.orderId === order.id);
+        return { ...order, productionStage: prod?.stage ?? order.productionStage ?? null };
+      });
     },
     async get(id: string) {
       if (HTTP_ENABLED) return (await httpOrders.get(id)) as Order | null;
@@ -1381,7 +1479,8 @@ export const db = {
       if (!order) return null;
       const user = currentUser();
       if (user?.role === "client" && order.customerId !== user.id) throw new ForbiddenError();
-      return order;
+      const prod = getState().productionOrders.find((item) => item.orderId === order.id);
+      return { ...order, productionStage: prod?.stage ?? order.productionStage ?? null };
     },
     async updateStatus(id: string, status: Order["status"]) {
       if (HTTP_ENABLED) {
@@ -1400,27 +1499,76 @@ export const db = {
         if (status === "production" || status === "processing") {
           const existing = draft.productionOrders.find((item) => item.orderId === id);
           if (!existing) {
+            const stage = order.kind === "ready_to_wear" ? "cutting" : "measurements_confirmed";
             draft.productionOrders.unshift({
               id: `prod_${order.number}`,
               orderId: id,
               customerId: order.customerId,
               garment: order.name,
               sku: order.sku,
-              stage: order.kind === "ready_to_wear" ? "cutting" : "measurements_confirmed",
+              stage,
               assigneeId: pickFloorTailor(draft),
               dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
             });
+            order.productionStage = stage;
+          } else {
+            order.productionStage = existing.stage;
           }
         }
         if (status === "ready" || status === "delivered" || status === "dispatched") {
           const prod = draft.productionOrders.find((item) => item.orderId === id);
           if (prod) {
             prod.stage = status === "ready" ? "ready" : "completed";
+            order.productionStage = prod.stage;
           }
         }
       });
       audit(actor.id, "order.status", `#${id} → ${status}`);
       return getState().orders.find((item) => item.id === id)!;
+    },
+    async sendPrice(
+      id: string,
+      input: {
+        totalKobo: number;
+        depositKobo?: number;
+        description?: string;
+        channel?: "email" | "whatsapp" | "both";
+      },
+    ) {
+      if (HTTP_ENABLED) return httpOrders.sendPrice(id, input);
+      await delay();
+      assertRoles(["super_admin", "manager", "desk", "designer"], "send price", "orders");
+      const order = getState().orders.find((item) => item.id === id);
+      if (!order) throw new Error("Order not found.");
+      const deposit =
+        input.depositKobo ?? Math.ceil((input.totalKobo * (getState().settings.depositPercent ?? 50)) / 100);
+      mutate((draft) => {
+        const row = draft.orders.find((item) => item.id === id);
+        if (!row) return;
+        row.priceOnRequest = true;
+        row.subtotalKobo = input.totalKobo;
+        row.totalKobo = input.totalKobo;
+        row.depositKobo = deposit;
+        row.status = "pending_payment";
+        row.quoteStatus = "sent";
+        row.quoteNumber = "QUO-DEMO";
+      });
+      const payUrl = `${window.location.origin}/quote/pay/demo`;
+      const cancelUrl = `${window.location.origin}/quote/cancel/demo`;
+      return {
+        quotation: {
+          id: "demo",
+          number: "QUO-DEMO",
+          totalKobo: input.totalKobo,
+          depositKobo: deposit,
+          status: "sent",
+        },
+        payUrl,
+        cancelUrl,
+        trackUrl: `${window.location.origin}/track`,
+        whatsappUrl: `https://api.whatsapp.com/send/?text=${encodeURIComponent(`Price ready: ${payUrl}`)}`,
+        emailed: input.channel !== "whatsapp",
+      };
     },
     async payBalance(orderId: string, payment: PlaceOrderPayload["payment"]) {
       if (HTTP_ENABLED) {
@@ -1438,7 +1586,7 @@ export const db = {
         await httpPayments.submitTransfer({
           orderId,
           transactionNumber: payment.transactionNumber,
-          receiptUrl: payment.receiptDataUrl,
+          receiptUrl: payment.receiptUrl,
           type: "balance",
         });
         return {
@@ -1458,7 +1606,7 @@ export const db = {
       }
       return db.payments.submitTransfer(orderId, {
         transactionNumber: payment.transactionNumber,
-        receiptDataUrl: payment.receiptDataUrl,
+        receiptUrl: payment.receiptUrl,
         amountKobo: due,
         type: "balance",
       });
@@ -1475,19 +1623,23 @@ export const db = {
     },
     async trackPublic(number: string) {
       if (HTTP_ENABLED) {
-        const order = (await httpOrders.track(number)) as Record<string, unknown> | null;
-        if (!order) return null;
-        return {
-          number: String(order.number ?? ""),
-          name: String(order.name ?? "EUNIK order"),
-          image: (order.image as string | undefined) ?? undefined,
-          kind: String(order.kind ?? "ready_to_wear"),
-          status: String(order.status ?? "pending_payment"),
-          createdAt: String(order.createdAt ?? order.created_at ?? ""),
-          fulfillment: String(order.fulfillment ?? "pickup_ibadan"),
-          stage: (order.stage as string | null) ?? null,
-          customerName: String(order.customerName ?? order.customer_name ?? ""),
-        };
+        try {
+          const order = (await httpOrders.track(number.replace(/^#/, "").trim())) as Record<string, unknown> | null;
+          if (!order) return null;
+          return {
+            number: String(order.number ?? ""),
+            name: String(order.name ?? "EUNIK order"),
+            image: (order.image as string | undefined) ?? undefined,
+            kind: String(order.kind ?? "ready_to_wear"),
+            status: String(order.status ?? "pending_payment"),
+            createdAt: String(order.createdAt ?? order.created_at ?? ""),
+            fulfillment: String(order.fulfillment ?? "pickup_ibadan"),
+            stage: (order.stage as string | null) ?? null,
+            customerName: String(order.customerName ?? order.customer_name ?? ""),
+          };
+        } catch {
+          return null;
+        }
       }
       await delay();
       const cleaned = number.replace(/^#/, "").trim();
@@ -1508,7 +1660,11 @@ export const db = {
     },
     async reorder(orderId: string) {
       if (HTTP_ENABLED) {
-        throw new Error("Re-order from the catalogue while the live API is on — bag sync is coming.");
+        const user = requireUser();
+        if (user.role !== "client") throw new ForbiddenError("House staff cannot re-order as clients.");
+        const result = await httpOrders.reorder(orderId);
+        emitCartChange();
+        return result.added;
       }
       await delay();
       const user = requireUser();
@@ -1531,22 +1687,23 @@ export const db = {
         }
         for (const productId of unique) {
           const product = draft.products.find((item) => item.id === productId);
-          if (!product || product.priceOnRequest) continue;
+          if (!product) continue;
           current.lines.push({
             id: crypto.randomUUID(),
             productId,
-            kind: product.sellsRtw ? "rtw" : "mtm",
+            kind: product.priceOnRequest || !product.sellsRtw ? "mtm" : "rtw",
             qty: 1,
           });
           added += 1;
         }
       });
-      if (!added) throw new Error("Those looks need a price quote. Open a custom request instead.");
+      if (!added) throw new Error("Nothing could be added back to your bag.");
       return added;
     },
   },
   wishlist: {
     async list() {
+      if (HTTP_ENABLED) return (await httpWishlist.list()) as Product[];
       await delay(80);
       const user = requireUser();
       if (user.role !== "client") throw new ForbiddenError("House staff cannot keep a client wishlist.");
@@ -1554,6 +1711,10 @@ export const db = {
       return getState().products.filter((item) => ids.includes(item.id));
     },
     async add(productId: string) {
+      if (HTTP_ENABLED) {
+        await httpWishlist.add(productId);
+        return;
+      }
       await delay();
       const user = requireUser();
       if (user.role !== "client") throw new ForbiddenError("House staff cannot keep a client wishlist.");
@@ -1563,6 +1724,10 @@ export const db = {
       });
     },
     async remove(productId: string) {
+      if (HTTP_ENABLED) {
+        await httpWishlist.remove(productId);
+        return;
+      }
       await delay();
       const user = requireUser();
       if (user.role !== "client") throw new ForbiddenError("House staff cannot keep a client wishlist.");
@@ -1575,16 +1740,41 @@ export const db = {
   },
   measurements: {
     async listByCustomer(customerId: string) {
+      if (HTTP_ENABLED) {
+        const user = currentUser();
+        if (user?.role === "client") {
+          if (user.id !== customerId) throw new ForbiddenError();
+          return (await httpMeasurements.listMine()) as MeasurementProfile[];
+        }
+        return (await httpMeasurements.listForCustomer(customerId)) as MeasurementProfile[];
+      }
       await delay();
       const user = currentUser();
       if (user?.role === "client" && user.id !== customerId) throw new ForbiddenError();
       return getState().measurementProfiles.filter((item) => item.customerId === customerId);
     },
     async get(id: string) {
+      if (HTTP_ENABLED) {
+        const user = requireUser();
+        const list =
+          user.role === "client"
+            ? ((await httpMeasurements.listMine()) as MeasurementProfile[])
+            : ((await httpMeasurements.listForCustomer(user.id)) as MeasurementProfile[]);
+        return list.find((item) => item.id === id) ?? null;
+      }
       await delay(80);
       return getState().measurementProfiles.find((item) => item.id === id) ?? null;
     },
     async create(input: Omit<MeasurementProfile, "id" | "measuredAt">) {
+      if (HTTP_ENABLED) {
+        return (await httpMeasurements.create({
+          customerId: input.customerId,
+          name: input.name,
+          unit: input.unit,
+          values: input.values,
+          fit: input.fit,
+        })) as MeasurementProfile;
+      }
       await delay();
       const user = requireUser();
       if (user.role === "client") input.customerId = user.id;
@@ -1669,10 +1859,25 @@ export const db = {
       input: { description: string; totalKobo: number; depositKobo: number; customerId?: string },
     ) {
       if (HTTP_ENABLED) {
-        const request = getState().customDesignRequests.find((item) => item.id === requestId);
+        const requests = (await httpCustom.listRequests()) as CustomDesignRequest[];
+        const request = requests.find((item) => item.id === requestId);
         const customerId = input.customerId || request?.customerId;
         if (!customerId) throw new Error("Customer missing on request.");
-        return (await httpQuotations.create({ customerId, requestId, ...input })) as unknown as Quotation;
+        const created = await httpQuotations.create({ customerId, requestId, ...input });
+        const list = (await httpQuotations.list()) as Quotation[];
+        return (
+          list.find((item) => item.id === created.id) ?? {
+            id: created.id,
+            number: created.number,
+            customerId,
+            requestId,
+            description: input.description,
+            totalKobo: input.totalKobo,
+            depositKobo: input.depositKobo,
+            status: "sent" as const,
+            createdAt: new Date().toISOString(),
+          }
+        );
       }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "desk", "designer"], "quote", "quotes");
@@ -1701,11 +1906,7 @@ export const db = {
     },
     async accept(id: string): Promise<Order> {
       if (HTTP_ENABLED) {
-        await httpQuotations.accept(id);
-        const orders = (await httpOrders.list()) as Order[];
-        const pending = orders.find((item) => item.status === "pending_payment" && item.kind === "bespoke");
-        if (pending) return pending;
-        throw new Error("Quote accepted — open Payments to pay your deposit.");
+        return (await httpQuotations.accept(id)) as Order;
       }
       await delay();
       const user = requireUser();
@@ -1756,6 +1957,10 @@ export const db = {
           assigneeId: pickFloorTailor(draft),
           dueDate: new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10),
         });
+        if (row.requestId) {
+          const request = draft.customDesignRequests.find((item) => item.id === row.requestId);
+          if (request) request.status = "closed";
+        }
         const client = draft.users.find((entry) => entry.id === row.customerId);
         if (client) {
           draft.notifications.unshift({
@@ -1807,11 +2012,13 @@ export const db = {
       });
     },
     async listMine() {
+      if (HTTP_ENABLED) return (await httpQuotations.listMine()) as Quotation[];
       await delay();
       const user = requireUser();
       return getState().quotations.filter((item) => item.customerId === user.id);
     },
     async listAll() {
+      if (HTTP_ENABLED) return (await httpQuotations.list()) as Quotation[];
       await delay();
       assertRoles(["super_admin", "manager", "desk", "designer"], "list quotes", "quotes");
       return getState().quotations;
@@ -1879,12 +2086,17 @@ export const db = {
           if (stage === "ready") order.status = "ready";
           else if (stage === "completed") order.status = "delivered";
           else order.status = "production";
+          order.productionStage = stage;
         }
       });
       audit(actor.id, "production.stage", `${job.garment} → ${stage}`);
       return getState().productionOrders.find((item) => item.id === productionOrderId)!;
     },
     async assignTask(productionOrderId: string, staffUserId: string) {
+      if (HTTP_ENABLED) {
+        await httpProduction.assign(productionOrderId, staffUserId || null);
+        return;
+      }
       await delay();
       assertRoles(["super_admin", "manager", "desk"], "assign the floor", "production");
       mutate((draft) => {
@@ -1895,7 +2107,15 @@ export const db = {
     async getByOrder(orderId: string) {
       if (HTTP_ENABLED) {
         const board = (await httpProduction.list()) as ProductionOrder[];
-        return board.find((item) => item.orderId === orderId) ?? null;
+        const key = orderId.trim().toLowerCase();
+        return (
+          board.find(
+            (item) =>
+              item.orderId === orderId ||
+              item.orderId?.toLowerCase() === key ||
+              (item as { orderNumber?: string }).orderNumber?.toLowerCase() === key,
+          ) ?? null
+        );
       }
       await delay(40);
       return getState().productionOrders.find((item) => item.orderId === orderId) ?? null;
@@ -1903,6 +2123,7 @@ export const db = {
   },
   fittings: {
     async list() {
+      if (HTTP_ENABLED) return (await httpFittings.list()) as Fitting[];
       await delay();
       const user = requireUser();
       if (user.role === "client") throw new ForbiddenError();
@@ -1912,6 +2133,7 @@ export const db = {
       return getState().fittings;
     },
     async create(input: { orderId: string; date: string; notes: string }) {
+      if (HTTP_ENABLED) return (await httpFittings.create(input)) as Fitting;
       await delay();
       assertRoles(["super_admin", "manager", "desk", "tailor", "cutter", "qc"], "book a fitting", "fittings");
       const row = { id: crypto.randomUUID(), status: "scheduled" as const, ...input };
@@ -1921,6 +2143,10 @@ export const db = {
       return row;
     },
     async update(id: string, patch: Partial<{ notes: string; status: "scheduled" | "done"; date: string }>) {
+      if (HTTP_ENABLED) {
+        await httpFittings.update(id, patch);
+        return;
+      }
       await delay();
       assertRoles(["super_admin", "manager", "desk", "tailor", "cutter", "qc"], "update a fitting", "fittings");
       mutate((draft) => {
@@ -2107,6 +2333,17 @@ export const db = {
   },
   tickets: {
     async create(input: { name: string; email: string; phone: string; subject: string; message: string }) {
+      if (HTTP_ENABLED) {
+        const created = await httpPublic.ticket(input);
+        const mine = (await httpTickets.listMine()) as SupportTicket[];
+        return mine.find((item) => item.id === created.id) ?? {
+          id: created.id,
+          createdAt: new Date().toISOString(),
+          status: "open" as const,
+          replies: [],
+          ...input,
+        };
+      }
       await delay();
       const row = {
         id: crypto.randomUUID(),
@@ -2121,11 +2358,13 @@ export const db = {
       return row;
     },
     async list() {
+      if (HTTP_ENABLED) return (await httpTickets.list()) as SupportTicket[];
       await delay();
       assertRoles(["super_admin", "manager", "desk"], "read the desk", "support");
       return getState().tickets;
     },
     async listMine() {
+      if (HTTP_ENABLED) return (await httpTickets.listMine()) as SupportTicket[];
       await delay();
       const user = requireUser();
       return getState().tickets.filter(
@@ -2133,6 +2372,10 @@ export const db = {
       );
     },
     async reply(id: string, body: string) {
+      if (HTTP_ENABLED) {
+        await httpTickets.reply(id, body);
+        return;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "desk"], "reply on a ticket", "support");
       mutate((draft) => {
@@ -2142,6 +2385,10 @@ export const db = {
       audit(actor.id, "ticket.reply", id);
     },
     async setStatus(id: string, status: "open" | "closed") {
+      if (HTTP_ENABLED) {
+        await httpTickets.setStatus(id, status);
+        return;
+      }
       await delay();
       assertRoles(["super_admin", "manager", "desk"], "close a ticket", "support");
       mutate((draft) => {
@@ -2198,10 +2445,21 @@ export const db = {
       return getState().lookbookItems;
     },
     async coupons() {
+      if (HTTP_ENABLED) {
+        // No list endpoint — house promo is looked up by code from homepage settings.
+        return [] as Coupon[];
+      }
       await delay(40);
       return getState().coupons;
     },
     async coupon(code: string) {
+      if (HTTP_ENABLED) {
+        try {
+          return (await httpContent.coupon(code)) as Coupon;
+        } catch {
+          return null;
+        }
+      }
       await delay(40);
       return getState().coupons.find((item) => item.code === code) ?? null;
     },
@@ -2306,6 +2564,10 @@ export const db = {
       });
     },
     async mailbox() {
+      if (HTTP_ENABLED) {
+        // Outbound SMTP is server-side; studio Support owns the ticket inbox.
+        return [] as ReturnType<typeof getState>["mailbox"];
+      }
       await delay();
       assertRoles(["super_admin", "content", "manager"], "read house mail", "content");
       return getState().mailbox;
@@ -2350,7 +2612,14 @@ export const db = {
         }, {}),
       };
     },
-    async profit() {
+    async profit(): Promise<{
+      revenueKobo: number;
+      cogsKobo: number;
+      profitKobo: number;
+      margin: number;
+      byKind: { kind: string; sales: number; cogs: number; profit: number }[];
+    }> {
+      if (HTTP_ENABLED) return httpAnalytics.profit();
       await delay();
       assertRoles(["super_admin", "manager", "finance"], "see profit", "analytics");
       const revenueKobo = getState()
@@ -2366,7 +2635,8 @@ export const db = {
       });
       return { revenueKobo, cogsKobo, profitKobo, margin: revenueKobo ? profitKobo / revenueKobo : 0, byKind };
     },
-    async salesSeries() {
+    async salesSeries(): Promise<{ day: string; naira: number }[]> {
+      if (HTTP_ENABLED) return httpAnalytics.salesSeries();
       await delay();
       assertRoles(["super_admin", "manager", "finance"], "see sales", "analytics");
       const anchor = demoToday();
@@ -2657,20 +2927,24 @@ export const db = {
   },
   reviews: {
     async forProduct(productId: string) {
+      if (HTTP_ENABLED) return (await httpReviews.forProduct(productId)) as Review[];
       await delay(80);
       return getState().reviews.filter((item) => item.productId === productId && item.status === "approved");
     },
     async listMine() {
+      if (HTTP_ENABLED) return (await httpReviews.listMine()) as Review[];
       await delay();
       const user = requireUser();
       return getState().reviews.filter((item) => item.customerId === user.id);
     },
     async listAll() {
+      if (HTTP_ENABLED) return (await httpReviews.listAll()) as Review[];
       await delay();
       assertRoles(["super_admin", "manager", "content", "desk"], "moderate reviews", "support");
       return getState().reviews;
     },
     async create(input: { productId: string; rating: number; body: string }) {
+      if (HTTP_ENABLED) return (await httpReviews.create(input)) as Review;
       await delay();
       const user = requireUser();
       if (user.role !== "client") throw new ForbiddenError("Reviews are written from a client book.");
@@ -2692,6 +2966,10 @@ export const db = {
       return row;
     },
     async moderate(id: string, status: "approved" | "rejected") {
+      if (HTTP_ENABLED) {
+        await httpReviews.moderate(id, status);
+        return;
+      }
       await delay();
       const actor = assertRoles(["super_admin", "manager", "content"], "moderate reviews", "support");
       mutate((draft) => {
@@ -2703,6 +2981,12 @@ export const db = {
   },
   attendance: {
     async list() {
+      if (HTTP_ENABLED) {
+        const user = requireUser();
+        const rows = (await httpAttendance.list()) as AttendanceEvent[];
+        if (["super_admin", "manager"].includes(user.role)) return rows;
+        return rows.filter((item) => item.userId === user.id);
+      }
       await delay();
       const user = requireUser();
       if (user.role === "client") throw new ForbiddenError();
@@ -2714,6 +2998,16 @@ export const db = {
       return rows.filter((item) => item.userId === user.id);
     },
     async clock(type: "in" | "out", note?: string) {
+      if (HTTP_ENABLED) {
+        await httpAttendance.clock(type, note);
+        return {
+          id: crypto.randomUUID(),
+          userId: requireUser().id,
+          type,
+          at: nowIso(),
+          note,
+        };
+      }
       await delay();
       const user = requireUser();
       if (user.role === "client") throw new ForbiddenError();
@@ -2790,6 +3084,23 @@ export const db = {
   },
   search: {
     async all(q: string) {
+      if (HTTP_ENABLED) {
+        const query = q.trim();
+        if (!query) return { products: [] as Product[], posts: [] as BlogPost[] };
+        const [products, posts] = await Promise.all([
+          httpProducts.list({ q: query }) as Promise<Product[]>,
+          httpContent.journal() as Promise<BlogPost[]>,
+        ]);
+        const needle = query.toLowerCase();
+        return {
+          products,
+          posts: posts.filter(
+            (item) =>
+              item.title.toLowerCase().includes(needle) ||
+              item.excerpt.toLowerCase().includes(needle),
+          ),
+        };
+      }
       await delay();
       const query = q.trim().toLowerCase();
       if (!query) return { products: [], posts: [] };
@@ -2805,6 +3116,9 @@ export const db = {
     },
   },
   async reset() {
+    if (HTTP_ENABLED) {
+      throw new Error("Reset is only available in local presentation mode without the live API.");
+    }
     await delay();
     const actor = currentUser();
     if (actor && !["super_admin", "manager"].includes(actor.role)) {

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageHero from "@/components/PageHero";
 import StaffShopGuard from "@/components/StaffShopGuard";
+import { HTTP_ENABLED } from "@/api/http";
 import { db } from "@/db/database";
 import { useCart } from "@/context/CartProvider";
 import { useAsync } from "@/hooks/useAsync";
@@ -14,11 +15,25 @@ export default function CartPage() {
   const totals = cart ? db.cart.totals(cart) : { subtotal: 0, discount: 0, payable: 0 };
 
   async function coupon(form: HTMLFormElement) {
-    const code = String(new FormData(form).get("code") ?? "");
-    const result = await db.cart.applyCoupon(code);
-    if ("error" in result) toast.error(result.error);
-    else toast.success(`${result.percent}% applied.`);
-    await refresh();
+    const code = String(new FormData(form).get("code") ?? "").trim();
+    if (!code) {
+      toast.message("Enter a coupon code.");
+      return;
+    }
+    if (HTTP_ENABLED) {
+      toast.message("Apply coupons at checkout.", {
+        description: "Bag codes sync with the live order when you place it.",
+      });
+      return;
+    }
+    try {
+      const result = await db.cart.applyCoupon(code);
+      if ("error" in result) toast.error(result.error);
+      else toast.success(`${result.percent}% applied.`);
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not apply coupon.");
+    }
   }
 
   return (
@@ -52,7 +67,9 @@ export default function CartPage() {
                         {line.kind === "mtm" ? "Made to measure" : "Ready to wear"}
                         {line.size ? ` · ${line.size}` : ""}
                       </p>
-                      <p className="mt-1 text-ink">{formatNaira(unit)}</p>
+                      <p className="mt-1 text-ink">
+                        {line.priceOnRequest || product?.priceOnRequest ? "Request for price" : formatNaira(unit)}
+                      </p>
                       <div className="mt-3 flex items-center gap-3">
                         <input
                           type="number"

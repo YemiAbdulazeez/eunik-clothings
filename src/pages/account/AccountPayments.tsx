@@ -31,17 +31,17 @@ export default function AccountPayments() {
           orderId,
           email: user?.email ?? order.customerEmail,
           amountKobo: due,
-          type: order.paidKobo > 0 ? "balance" : order.kind === "bespoke" ? "deposit" : "full",
+          type: order.paidKobo > 0 ? "balance" : "full",
         });
         toast.success(result.demo ? "Demo Paystack recorded." : "Payment successful.");
       } else if (choice.method === "bank_transfer" && HTTP_ENABLED) {
         await httpPayments.submitTransfer({
           orderId,
           transactionNumber: choice.transactionNumber,
-          receiptUrl: choice.receiptDataUrl,
+          receiptUrl: choice.receiptUrl,
           type: "balance",
         });
-        toast.success("Receipt submitted.");
+        toast.success("Transfer submitted — waiting for house confirmation.");
       } else {
         await db.orders.payBalance(orderId, choice);
         toast.success(choice.method === "paystack" ? "Demo Paystack recorded." : "Receipt submitted.");
@@ -59,7 +59,7 @@ export default function AccountPayments() {
     <div className="space-y-6">
       <PageHeader
         title="Payments"
-        subtitle="Paystack popup or bank transfer with a receipt. Naira only."
+        subtitle="Paystack or bank transfer. Pay remaining balances here — full amount of what is still due."
         onRefresh={() => Promise.all([refreshOrders(), refreshPayments()])}
       />
       <div className="grid gap-4 sm:grid-cols-3">

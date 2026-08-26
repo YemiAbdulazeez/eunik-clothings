@@ -107,6 +107,18 @@ export interface HttpUser {
   role: string;
   name: string;
   firstName?: string;
+  lastName?: string;
+  phone?: string;
+  city?: string;
+  gender?: string;
+  address?: string;
+  birthDay?: number;
+  birthMonth?: number;
+  preferredFit?: string;
+  department?: string;
+  jobTitle?: string;
+  emergencyPhone?: string;
+  notes?: string;
   navSections: string[];
   mustChangePassword: boolean;
 }
@@ -224,6 +236,25 @@ export const httpAuth = {
     });
     captureTokens(data, Boolean(localStorage.getItem("eunik_refresh")));
   },
+
+  async updateMe(patch: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    city?: string;
+    gender?: string;
+    address?: string;
+    birthDay?: number;
+    birthMonth?: number;
+    preferredFit?: string;
+    department?: string;
+    jobTitle?: string;
+    emergencyPhone?: string;
+    notes?: string;
+  }): Promise<HttpUser> {
+    const data = await api<{ user: HttpUser }>("/auth/me", { method: "PATCH", body: patch });
+    return data.user;
+  },
 };
 
 // ─── B1 — Products ────────────────────────────────────────────────────────────
@@ -263,6 +294,10 @@ export const httpProducts = {
   },
   async remove(id: string) {
     await api(`/studio/products/${id}`, { method: "DELETE" });
+  },
+  async fabrics() {
+    const data = await api<{ fabrics: unknown[] }>("/fabrics");
+    return data.fabrics;
   },
 };
 
@@ -380,6 +415,85 @@ export const httpOrders = {
     const data = await api<{ order?: unknown }>(`/orders/${id}/status`, { method: "PATCH", body: { status } });
     return data.order;
   },
+  async reorder(id: string) {
+    return api<{ added: number }>(`/orders/${encodeURIComponent(id)}/reorder`, { method: "POST" });
+  },
+  async sendPrice(
+    id: string,
+    body: {
+      totalKobo: number;
+      depositKobo?: number;
+      description?: string;
+      channel?: "email" | "whatsapp" | "both";
+    },
+  ) {
+    return api<{
+      quotation: { id: string; number: string; totalKobo: number; depositKobo: number; status: string };
+      payUrl: string;
+      cancelUrl: string;
+      trackUrl: string;
+      whatsappUrl: string;
+      emailed: boolean;
+    }>(`/orders/${encodeURIComponent(id)}/send-price`, { method: "POST", body });
+  },
+};
+
+/** Public token links for request-for-price pay / cancel (no auth) */
+export const httpRfpQuote = {
+  async getPay(token: string) {
+    return api<{
+      quote: { number: string; description: string; totalKobo: number; depositKobo: number; status: string };
+      order: {
+        id: string;
+        number: string;
+        name: string;
+        status: string;
+        totalKobo: number;
+        depositKobo: number;
+        paidKobo: number;
+        priceOnRequest: boolean;
+        customerEmail: string;
+        customerName: string;
+      };
+      amountDueKobo: number;
+      depositDueKobo: number;
+      bank: { bankName?: string; accountName?: string; accountNumber?: string; narrationHint?: string } | null;
+    }>(`/quote/pay/${encodeURIComponent(token)}`, { skipRefresh: true });
+  },
+  async paystack(token: string, type: "deposit" | "balance" | "full" = "deposit") {
+    return api<{ accessCode: string; reference: string; amountKobo: number; orderId: string }>(
+      `/quote/pay/${encodeURIComponent(token)}/paystack`,
+      { method: "POST", body: { type }, skipRefresh: true },
+    );
+  },
+  async transfer(
+    token: string,
+    payload: { transactionNumber: string; receiptUrl?: string; type?: "deposit" | "balance" | "full" },
+  ) {
+    return api<{ ok: boolean; orderId: string; orderNumber: string }>(
+      `/quote/pay/${encodeURIComponent(token)}/transfer`,
+      { method: "POST", body: payload, skipRefresh: true },
+    );
+  },
+  async verify(token: string, reference: string) {
+    return api<{ status: string }>(`/quote/pay/${encodeURIComponent(token)}/verify`, {
+      method: "POST",
+      body: { reference },
+      skipRefresh: true,
+    });
+  },
+  async getCancel(token: string) {
+    return api<{ orderNumber: string; status: string; paidKobo: number; canCancel: boolean }>(
+      `/quote/cancel/${encodeURIComponent(token)}`,
+      { skipRefresh: true },
+    );
+  },
+  async cancel(token: string) {
+    return api<{ orderNumber: string; already: boolean }>(`/quote/cancel/${encodeURIComponent(token)}`, {
+      method: "POST",
+      skipRefresh: true,
+    });
+  },
 };
 
 // ─── B1 — Payments ────────────────────────────────────────────────────────────
@@ -400,6 +514,10 @@ export const httpPayments = {
   async list() {
     const data = await api<{ payments: unknown[] }>("/payments");
     return data.payments;
+  },
+  async listByOrder(orderId: string) {
+    const rows = (await this.list()) as { orderId?: string }[];
+    return rows.filter((item) => item.orderId === orderId);
   },
   async approve(id: string) {
     await api(`/payments/${id}/approve`, { method: "PATCH" });
@@ -427,8 +545,20 @@ export const httpCustom = {
     deliveryDate?: string;
     description: string;
     consultation?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    agreedPolicies?: boolean;
   }) {
-    return api<Record<string, unknown>>("/custom-requests", { method: "POST", body: payload });
+    return api<{
+      id: string;
+      needsLogin?: boolean;
+      email?: string;
+      accountCreated?: boolean;
+      accessToken?: string;
+      refreshToken?: string;
+      [key: string]: unknown;
+    }>("/custom-requests", { method: "POST", body: payload });
   },
   async listMine() {
     const data = await api<{ requests: unknown[] }>("/custom-requests/mine");
@@ -450,10 +580,15 @@ export const httpQuotations = {
     await api(`/studio/quotes/${id}`, { method: "PATCH", body: patch });
   },
   async accept(id: string) {
-    await api(`/studio/quotes/${id}/accept`, { method: "POST" });
+    const data = await api<{ order: unknown }>(`/studio/quotes/${id}/accept`, { method: "POST" });
+    return data.order;
   },
   async reject(id: string) {
     await api(`/studio/quotes/${id}/reject`, { method: "POST" });
+  },
+  async listMine() {
+    const data = await api<{ quotations: unknown[] }>("/quotes/mine");
+    return data.quotations;
   },
 };
 
@@ -466,6 +601,13 @@ export const httpProduction = {
   },
   async advance(id: string, toStage: string) {
     await api(`/studio/production/${id}/advance`, { method: "POST", body: { toStage } });
+  },
+  async assign(id: string, assigneeId: string | null) {
+    const data = await api<{ production: unknown }>(`/studio/production/${id}`, {
+      method: "PATCH",
+      body: { assigneeId },
+    });
+    return data.production;
   },
 };
 
@@ -543,13 +685,24 @@ export const httpAppointments = {
   },
   async create(payload: {
     customerName: string;
+    email?: string;
+    phone?: string;
     service: string;
     date: string;
     time: string;
     location?: string;
     notes?: string;
+    agreedPolicies?: boolean;
   }) {
-    return api<{ id: string; reference: string }>("/appointments", { method: "POST", body: payload });
+    return api<{
+      id: string;
+      reference: string;
+      needsLogin?: boolean;
+      email?: string;
+      accountCreated?: boolean;
+      accessToken?: string;
+      refreshToken?: string;
+    }>("/appointments", { method: "POST", body: payload });
   },
   async listMine() {
     const data = await api<{ appointments: unknown[] }>("/appointments/mine");
@@ -566,6 +719,122 @@ export const httpPublic = {
   },
   async lead(payload: { productId?: string; sku?: string }) {
     return api<{ id: string }>("/leads", { method: "POST", body: payload });
+  },
+};
+
+export const httpWishlist = {
+  async list() {
+    const data = await api<{ products: unknown[] }>("/wishlist/mine");
+    return data.products;
+  },
+  async add(productId: string) {
+    await api("/wishlist", { method: "POST", body: { productId } });
+  },
+  async remove(productId: string) {
+    await api(`/wishlist/${encodeURIComponent(productId)}`, { method: "DELETE" });
+  },
+};
+
+export const httpMeasurements = {
+  async listMine() {
+    const data = await api<{ profiles: unknown[] }>("/measurements/mine");
+    return data.profiles;
+  },
+  async listForCustomer(customerId: string) {
+    const data = await api<{ profiles: unknown[] }>(`/studio/measurements?customerId=${encodeURIComponent(customerId)}`);
+    return data.profiles;
+  },
+  async create(payload: {
+    customerId?: string;
+    name: string;
+    unit?: "cm" | "in";
+    values?: Record<string, number | string>;
+    fit?: "slim" | "regular" | "relaxed";
+  }) {
+    const data = await api<{ profile: unknown }>("/measurements", { method: "POST", body: payload });
+    return data.profile;
+  },
+};
+
+export const httpTickets = {
+  async list() {
+    const data = await api<{ tickets: unknown[] }>("/studio/tickets");
+    return data.tickets;
+  },
+  async listMine() {
+    const data = await api<{ tickets: unknown[] }>("/tickets/mine");
+    return data.tickets;
+  },
+  async reply(id: string, body: string) {
+    await api(`/studio/tickets/${id}/reply`, { method: "POST", body: { body } });
+  },
+  async setStatus(id: string, status: "open" | "closed") {
+    await api(`/studio/tickets/${id}`, { method: "PATCH", body: { status } });
+  },
+};
+
+export const httpReviews = {
+  async forProduct(productId: string) {
+    const data = await api<{ reviews: unknown[] }>(`/reviews?productId=${encodeURIComponent(productId)}&status=approved`);
+    return data.reviews;
+  },
+  async listMine() {
+    const data = await api<{ reviews: unknown[] }>("/reviews/mine");
+    return data.reviews;
+  },
+  async listAll() {
+    const data = await api<{ reviews: unknown[] }>("/studio/reviews");
+    return data.reviews;
+  },
+  async create(payload: { productId: string; rating: number; body: string }) {
+    const data = await api<{ review: unknown }>("/reviews", { method: "POST", body: payload });
+    return data.review;
+  },
+  async moderate(id: string, status: "approved" | "rejected") {
+    await api(`/studio/reviews/${id}`, { method: "PATCH", body: { status } });
+  },
+};
+
+export const httpAttendance = {
+  async list() {
+    const data = await api<{ attendance: unknown[] }>("/studio/attendance");
+    return data.attendance;
+  },
+  async clock(type: "in" | "out", note?: string) {
+    await api("/studio/attendance", { method: "POST", body: { type, note } });
+  },
+};
+
+export const httpFittings = {
+  async list() {
+    const data = await api<{ fittings: unknown[] }>("/studio/fittings");
+    return data.fittings;
+  },
+  async create(payload: { orderId: string; date: string; notes?: string }) {
+    const data = await api<{ fitting: unknown }>("/studio/fittings", { method: "POST", body: payload });
+    return data.fitting;
+  },
+  async update(id: string, patch: { notes?: string; status?: "scheduled" | "done"; date?: string }) {
+    await api(`/studio/fittings/${id}`, { method: "PATCH", body: patch });
+  },
+};
+
+export type ProfitReport = {
+  revenueKobo: number;
+  cogsKobo: number;
+  profitKobo: number;
+  margin: number;
+  byKind: { kind: string; sales: number; cogs: number; profit: number }[];
+};
+
+export const httpAnalytics = {
+  async profit(): Promise<ProfitReport> {
+    const data = await api<{ profit: ProfitReport }>("/studio/analytics/profit");
+    return data.profit;
+  },
+  async salesSeries(): Promise<{ day: string; naira: number }[]> {
+    const data = await api<{ series: { day: string; naira: number }[] }>("/studio/analytics/sales-series");
+    return data.series;
   },
 };
 
@@ -688,6 +957,10 @@ export const httpContent = {
   async journal() {
     const data = await api<{ posts: unknown[] }>("/journal");
     return data.posts;
+  },
+  async coupon(code: string) {
+    const data = await api<{ coupon: unknown }>(`/coupons/${encodeURIComponent(code)}`);
+    return data.coupon;
   },
   async events() {
     const data = await api<{ events: unknown[] }>("/events");

@@ -44,17 +44,26 @@ export default function StudioSupport() {
             </Field>
             <div className="mt-3 flex gap-2">
               <OsButton
-                onClick={() =>
-                  db.tickets.reply(item.id, reply[item.id] ?? "").then(() => {
-                    toast.success("Replied.");
-                    setReply((current) => ({ ...current, [item.id]: "" }));
-                  })
-                }
+                loadingText="Sending…"
+                onClick={async () => {
+                  await db.tickets.reply(item.id, reply[item.id] ?? "");
+                  toast.success("Replied.");
+                  setReply((current) => ({ ...current, [item.id]: "" }));
+                  await reloadTickets();
+                }}
               >
                 Send
               </OsButton>
               {item.status === "open" ? (
-                <OsButton variant="ghost" onClick={() => db.tickets.setStatus(item.id, "closed")}>
+                <OsButton
+                  variant="ghost"
+                  loadingText="Closing…"
+                  onClick={async () => {
+                    await db.tickets.setStatus(item.id, "closed");
+                    toast.message("Ticket closed.");
+                    await reloadTickets();
+                  }}
+                >
                   Close
                 </OsButton>
               ) : null}
@@ -75,10 +84,26 @@ export default function StudioSupport() {
               </div>
               {item.status === "pending" ? (
                 <div className="flex gap-2">
-                  <OsButton variant="gold" onClick={() => db.reviews.moderate(item.id, "approved")}>
+                  <OsButton
+                    variant="gold"
+                    loadingText="Publishing…"
+                    onClick={async () => {
+                      await db.reviews.moderate(item.id, "approved");
+                      toast.success("Published.");
+                      await reloadReviews();
+                    }}
+                  >
                     Publish
                   </OsButton>
-                  <OsButton variant="ghost" onClick={() => db.reviews.moderate(item.id, "rejected")}>
+                  <OsButton
+                    variant="ghost"
+                    loadingText="Holding…"
+                    onClick={async () => {
+                      await db.reviews.moderate(item.id, "rejected");
+                      toast.message("Held.");
+                      await reloadReviews();
+                    }}
+                  >
                     Hold
                   </OsButton>
                 </div>

@@ -256,7 +256,8 @@ export function createSeed(): DbState {
       currency: "NGN",
       freeShippingKobo: nairaToKobo(100000),
       demoMode: false,
-      depositPercent: 50,
+      depositPercent: 70,
+      paystackEnabled: false,
       pickupLocation: "Eunik HQ, Ibadan",
       aboutJoinLine: "Clients across Oyo, Lagos, Abuja & Ekiti",
       bank: {

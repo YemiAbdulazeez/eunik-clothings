@@ -268,7 +268,14 @@ function ContactForm({ mail }: { mail: { id: string; to: string; subject: string
         ) : null}
       </SectionCard>
       <SectionCard title="Outbound house mail">
-        {mail.length === 0 ? <p className="text-sm">No checkout welcome letters yet.</p> : null}
+        <p className="mb-3 text-sm text-muted">
+          Live mail is sent by the server (receipts, order status). Client enquiries land in{" "}
+          <a href="/studio/support" className="underline">
+            Support
+          </a>
+          .
+        </p>
+        {mail.length === 0 ? <p className="text-sm">No local demo letters on file.</p> : null}
         <ul className="space-y-3 text-sm">
           {mail.map((item) => (
             <li key={item.id} className="rounded-xl border border-line p-3">

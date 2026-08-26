@@ -5,6 +5,9 @@ import { HTTP_ENABLED, httpUploads } from "@/api/http";
 
 export type UploadFolder = "looks" | "events" | "receipts";
 
+/** Matches backend uploads limit. */
+export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+
 export function readImageFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
@@ -18,14 +21,25 @@ export function readImageFile(file: File): Promise<string> {
   });
 }
 
+function assertUploadableImage(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please upload an image file.");
+  }
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("Only jpeg, png, or webp images are allowed.");
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("Image must be 2MB or smaller.");
+  }
+}
+
 /** Upload to Cloudinary when the API is on; otherwise keep a local data URL (demo only). */
 export async function resolveImageUpload(
   file: File,
   folder: UploadFolder = "looks",
 ): Promise<string> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Please upload an image file.");
-  }
+  assertUploadableImage(file);
   if (HTTP_ENABLED) {
     const { url } = await httpUploads.upload(file, folder);
     return url;

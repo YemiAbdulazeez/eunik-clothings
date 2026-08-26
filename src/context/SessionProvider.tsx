@@ -44,6 +44,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       login: async (email, password, opts) => {
         const next = await db.auth.login(email, password, opts);
         await refresh();
+        if (next.role === "client") {
+          const { mergeGuestWishlistIntoAccount } = await import("@/components/WishlistHeart");
+          await mergeGuestWishlistIntoAccount().catch(() => {});
+        }
         return next;
       },
       logout: async () => {

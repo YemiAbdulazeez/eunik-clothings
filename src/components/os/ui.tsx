@@ -48,6 +48,28 @@ export function PageLoading({ label = "Loading…" }: { label?: string }) {
   );
 }
 
+/** Inline error for dashboard pages when useAsync fails. */
+export function PageError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void | Promise<unknown>;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-paper px-5 py-8 text-center" role="alert">
+      <p className="text-sm text-ink">{message}</p>
+      {onRetry ? (
+        <div className="mt-4 flex justify-center">
+          <OsButton variant="ghost" onClick={() => onRetry()} loadingText="Retrying…">
+            Try again
+          </OsButton>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function OsButton({
   children,
   variant = "ink",

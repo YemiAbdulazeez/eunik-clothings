@@ -63,6 +63,8 @@ import StudioSettings from "./pages/studio/StudioSettings";
 import StudioSupport from "./pages/studio/StudioSupport";
 import ThankYou from "./pages/ThankYou";
 import TrackOrder from "./pages/Track";
+import QuotePayPage from "./pages/QuotePay";
+import QuoteCancelPage from "./pages/QuoteCancel";
 
 export default function App() {
   return (
@@ -92,6 +94,8 @@ export default function App() {
           <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
           <Route path="/book" element={<Book />} />
           <Route path="/track" element={<TrackOrder />} />
+          <Route path="/quote/pay/:token" element={<QuotePayPage />} />
+          <Route path="/quote/cancel/:token" element={<QuoteCancelPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders/thank-you/:id" element={<ThankYou />} />

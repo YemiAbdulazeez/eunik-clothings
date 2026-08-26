@@ -2,6 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Loader2, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import ProductImageSlider, { productGallery } from "@/components/ProductImageSlider";
+import WishlistHeart from "@/components/WishlistHeart";
 import { db, type Product } from "@/db/database";
 import { formatNaira } from "@/lib/money";
 import { openProductWhatsApp } from "@/lib/whatsapp";
@@ -19,25 +21,27 @@ export default function ProductCard({ product }: { product: Product }) {
   const href = shopHref(location.pathname, product.sku);
   const shopper = canShop(user);
   const showWhatsApp = !isHouseStaff(user);
+  const gallery = productGallery(product);
 
   async function add() {
     if (busy) return;
     try {
-      if (product.priceOnRequest) {
-        toast.message("Request for price — open the look or WhatsApp the house.");
-        return;
-      }
-      if (!product.sellsRtw) {
+      if (!product.priceOnRequest && !product.sellsRtw) {
         toast.message("This look is made to measure.", {
           description: "Open it to choose cloth and measurements.",
         });
         return;
       }
       setBusy(true);
-      await db.cart.add({ productId: product.id, kind: "rtw", qty: 1 });
+      // Request-for-price and MTM-only looks go in as mtm so guest checkout works like a normal order.
+      await db.cart.add({
+        productId: product.id,
+        kind: product.priceOnRequest || !product.sellsRtw ? "mtm" : "rtw",
+        qty: 1,
+      });
       await refresh();
       trackEvent("add_to_bag", { sku: product.sku, path: href });
-      toast.success("Added to your bag.");
+      toast.success(product.priceOnRequest ? "Request for price in your bag." : "Added to your bag.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add to bag.");
     } finally {
@@ -53,7 +57,7 @@ export default function ProductCard({ product }: { product: Product }) {
       className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-2 text-[13px] text-white hover:bg-gold disabled:cursor-not-allowed disabled:opacity-70"
     >
       {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingBag className="mr-2 h-4 w-4" />}
-      {busy ? "Adding…" : product.priceOnRequest ? "Request price" : "Add to bag"}
+      {busy ? "Adding…" : product.priceOnRequest ? "Add request" : "Add to bag"}
     </button>
   ) : null;
 
@@ -67,54 +71,33 @@ export default function ProductCard({ product }: { product: Product }) {
     </button>
   ) : null;
 
-  if (!shopper && !showWhatsApp) {
-    return (
-      <article className="product-card group text-center">
-        <div className="relative mb-5 overflow-hidden bg-paper">
-          <Link to={href}>
-            <img
-              src={product.image}
-              alt={product.name}
-              className="aspect-[3/4] w-full object-cover transition duration-500 group-hover:scale-105"
-            />
-            <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-ink">
-              {product.sku}
-            </span>
-          </Link>
-        </div>
-        <Link to={href} className="font-alt text-[19px] font-medium text-ink hover:text-ink/70">
-          {product.name}
-        </Link>
-        <p className="mt-1 text-sm text-ink">
-          {product.priceOnRequest ? "Request for price" : formatNaira(product.priceKobo)}
-        </p>
-      </article>
-    );
-  }
-
-  return (
-    <article className="product-card group text-center">
-      <div className="relative mb-5 overflow-hidden bg-paper">
-        <Link to={href}>
-          <img
-            src={product.image}
-            alt={product.name}
-            className="aspect-[3/4] w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-          <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-ink">
-            {product.sku}
-          </span>
-          <div className="product-overlay pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition" />
-        </Link>
+  const media = (
+    <div className="relative mb-5 overflow-hidden bg-paper">
+      <Link to={href} className="block">
+        <ProductImageSlider images={gallery} alt={product.name} />
+        <span className="absolute left-3 top-3 z-10 rounded-full bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-ink">
+          {product.sku}
+        </span>
+      </Link>
+      <WishlistHeart productId={product.id} className="absolute right-3 top-3 z-10" />
+      {shopper || showWhatsApp ? (
         <div className="product-cta absolute bottom-5 left-1/2 z-10 hidden w-[90%] -translate-x-1/2 translate-y-2 flex-col gap-2 opacity-0 transition sm:flex sm:flex-row sm:justify-center">
           {addButton}
           {whatsAppButton}
         </div>
-      </div>
-      <div className="mb-4 flex flex-col gap-2 px-2 sm:hidden">
-        {addButton}
-        {whatsAppButton}
-      </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <article className="product-card group text-center">
+      {media}
+      {(shopper || showWhatsApp) && (addButton || whatsAppButton) ? (
+        <div className="mb-4 flex flex-col gap-2 px-2 sm:hidden">
+          {addButton}
+          {whatsAppButton}
+        </div>
+      ) : null}
       <Link to={href} className="font-alt text-[19px] font-medium text-ink hover:text-ink/70">
         {product.name}
       </Link>

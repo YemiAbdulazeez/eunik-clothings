@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Calendar, ClipboardList, Clock, Ruler, Shirt, User } from "lucide-react";
@@ -15,11 +15,20 @@ export default function AtelierBench() {
   const boardQ = useAsync(() => db.production.listBoard(), []);
   const fittingsQ = useAsync(() => db.fittings.list(), []);
   const settingsQ = useAsync(() => db.settings.get(), []);
+  const attendanceQ = useAsync(() => db.attendance.list().catch(() => []), [user?.id]);
   const board = boardQ.data;
   const fittings = fittingsQ.data;
   const settings = settingsQ.data;
   const reload = boardQ.reload;
-  const [clocked, setClocked] = useState(() => localStorage.getItem("eunik-clock") === "in");
+  const [clockBusy, setClockBusy] = useState(false);
+
+  const lastPunch = useMemo(() => {
+    const rows = attendanceQ.data ?? [];
+    const mine = rows.filter((item) => item.userId === user?.id);
+    return mine[0] ?? null;
+  }, [attendanceQ.data, user?.id]);
+
+  const clocked = lastPunch?.type === "in";
   const assigned = board ?? [];
   const today = settings?.demoToday ?? new Date().toISOString().slice(0, 10);
   const overdue = assigned.filter((item) => item.dueDate < today);
@@ -27,7 +36,7 @@ export default function AtelierBench() {
   if (boardQ.loading && !board) return <PageLoading />;
 
   async function refresh() {
-    await Promise.all([boardQ.reload(), fittingsQ.reload(), settingsQ.reload()]);
+    await Promise.all([boardQ.reload(), fittingsQ.reload(), settingsQ.reload(), attendanceQ.reload()]);
   }
 
   const tiles = [
@@ -39,11 +48,19 @@ export default function AtelierBench() {
     { to: "/atelier", label: "My bench", hint: "Assigned looks", icon: Shirt, section: "bench" as const },
   ].filter((tile) => (user ? canSeeSection(user, tile.section) : true));
 
-  function clock() {
+  async function clock() {
+    if (clockBusy) return;
     const next = !clocked;
-    setClocked(next);
-    localStorage.setItem("eunik-clock", next ? "in" : "out");
-    return db.attendance.clock(next ? "in" : "out").then(() => toast.success(next ? "Clocked in on the floor." : "Clocked out."));
+    setClockBusy(true);
+    try {
+      await db.attendance.clock(next ? "in" : "out");
+      await attendanceQ.reload();
+      toast.success(next ? "Clocked in on the floor." : "Clocked out.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not record punch.");
+    } finally {
+      setClockBusy(false);
+    }
   }
 
   async function advance(id: string, stage: ProductionStage) {
@@ -66,7 +83,7 @@ export default function AtelierBench() {
         subtitle="Advance only orders on your bench. No money screens here."
         onRefresh={() => refresh()}
         actions={
-          <OsButton variant={clocked ? "ghost" : "gold"} onClick={clock}>
+          <OsButton variant={clocked ? "ghost" : "gold"} loading={clockBusy} loadingText="Saving…" onClick={() => void clock()}>
             {clocked ? "Clock out" : "Clock in"}
           </OsButton>
         }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Field, OsButton, PageHeader, PageLoading, SectionCard, inputClass } from "@/components/os/ui";
 import { db } from "@/db/database";
+import { HTTP_ENABLED } from "@/api/http";
 import { useAsync } from "@/hooks/useAsync";
 import { useSession } from "@/context/SessionProvider";
 import { nairaToKobo } from "@/lib/money";
@@ -43,9 +44,10 @@ export default function StudioSettings() {
         address: String(data.get("address") ?? ""),
         pickupLocation: String(data.get("pickupLocation") ?? ""),
         aboutJoinLine: String(data.get("aboutJoinLine") ?? ""),
-        depositPercent: Number(data.get("depositPercent") || 50),
+        depositPercent: Number(data.get("depositPercent") || 70),
         freeShippingKobo: nairaToKobo(freeShippingNaira),
         demoMode: data.get("demoMode") === "on",
+        paystackEnabled: data.get("paystackEnabled") === "on",
         bank: {
           bankName: String(data.get("bankName") ?? ""),
           accountName: String(data.get("accountName") ?? ""),
@@ -129,28 +131,40 @@ export default function StudioSettings() {
             </div>
           </SectionCard>
 
+          <SectionCard title="Payments">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/50 p-4 text-sm leading-6 text-ink">
+              <input
+                type="checkbox"
+                name="paystackEnabled"
+                defaultChecked={Boolean(settings.paystackEnabled)}
+                className="mt-1 h-4 w-4 shrink-0 accent-ink"
+              />
+              <span>
+                <span className="font-medium">Allow Paystack payment</span>
+                <span className="mt-1 block text-muted">
+                  Off = checkout and account payments show bank transfer only. Turn on after you have live Paystack keys.
+                </span>
+              </span>
+            </label>
+          </SectionCard>
+
           <SectionCard title="Orders & shipping">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Deposit percent">
+              <Field label="Minimum payment % (70–100)">
                 <input
                   name="depositPercent"
                   type="number"
-                  min={0}
+                  min={70}
                   max={100}
-                  defaultValue={settings.depositPercent}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Free shipping from (₦)">
-                <input
-                  name="freeShippingNaira"
-                  type="number"
-                  min={0}
-                  defaultValue={Math.round(settings.freeShippingKobo / 100)}
+                  defaultValue={Math.min(100, Math.max(70, settings.depositPercent || 70))}
                   className={inputClass}
                 />
               </Field>
             </div>
+            <p className="mt-2 text-xs text-muted">
+              Clients may pay this minimum now or the full total. Any balance must be collected before ready / delivery.
+            </p>
+            <input type="hidden" name="freeShippingNaira" value={Math.round(settings.freeShippingKobo / 100)} />
             <label className="mt-4 flex items-center gap-2 text-sm text-ink">
               <input type="checkbox" name="demoMode" defaultChecked={settings.demoMode} />
               Demo mode (presentation switcher / banners)
@@ -171,16 +185,18 @@ export default function StudioSettings() {
         </SectionCard>
       )}
 
-      <SectionCard title="Local presentation">
-        <p className="text-sm">
-          Reset only clears the browser demo store. Live catalog, settings, and orders stay in Postgres.
-        </p>
-        <div className="mt-4">
-          <OsButton variant="ghost" onClick={() => reset()}>
-            Reset local presentation data
-          </OsButton>
-        </div>
-      </SectionCard>
+      {!HTTP_ENABLED ? (
+        <SectionCard title="Local presentation">
+          <p className="text-sm">
+            Reset only clears the browser demo store. Live catalog, settings, and orders stay in Postgres when the API is connected.
+          </p>
+          <div className="mt-4">
+            <OsButton variant="ghost" onClick={() => reset()}>
+              Reset local presentation data
+            </OsButton>
+          </div>
+        </SectionCard>
+      ) : null}
 
       {logs && logs.length > 0 ? (
         <SectionCard title="Audit log">

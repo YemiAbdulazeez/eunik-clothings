@@ -23,6 +23,9 @@ export default function TrackOrder() {
       const found = await db.orders.trackPublic(number);
       setResult(found);
       if (!found) setError("No order matches that number. Check the receipt or WhatsApp confirmation.");
+    } catch (cause) {
+      setResult(null);
+      setError(cause instanceof Error ? cause.message : "Could not look up that order.");
     } finally {
       setBusy(false);
     }
@@ -81,7 +84,6 @@ export default function TrackOrder() {
 
         {result && headline ? (
           <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-            {/* Temu-style status banner */}
             <div className="bg-gradient-to-br from-ink via-ink to-nero px-5 py-6 text-white">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold">Live status</p>
               <h2 className="mt-2 font-alt text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
@@ -93,10 +95,17 @@ export default function TrackOrder() {
                 <span>{statusLabel(result.fulfillment)}</span>
                 <span className="text-white/40">·</span>
                 <span className="capitalize">{statusLabel(result.kind)}</span>
+                {"priceOnRequest" in result && result.priceOnRequest ? (
+                  <>
+                    <span className="text-white/40">·</span>
+                    <span className="rounded-full bg-gold/30 px-2 py-0.5 text-[11px] uppercase tracking-wide text-gold">
+                      Request for price
+                    </span>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            {/* Package card */}
             <div className="flex gap-4 border-b border-line px-5 py-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-paper">
                 {result.image ? (
@@ -123,10 +132,10 @@ export default function TrackOrder() {
               </div>
             </div>
 
-            {/* Logistics timeline */}
             <div className="px-5 py-5">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted">Logistics</p>
               <OrderStepper
+                key={`${result.status}-${result.stage ?? "none"}-${result.number}`}
                 status={result.status as OrderStatus}
                 stage={result.stage as ProductionStage | null}
                 kind={result.kind}
@@ -140,7 +149,7 @@ export default function TrackOrder() {
                 Contact the house
               </Link>
             </div>
-g          </div>
+          </div>
         ) : null}
       </section>
     </>

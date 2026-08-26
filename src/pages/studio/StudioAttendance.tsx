@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { toast } from "sonner";
-import { OsButton, PageHeader, PageLoading, SectionCard, StatCard } from "@/components/os/ui";
+import { OsButton, PageError, PageHeader, PageLoading, SectionCard, StatCard } from "@/components/os/ui";
 import { useSession } from "@/context/SessionProvider";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
@@ -8,7 +8,7 @@ import { formatWhen } from "@/lib/format";
 
 export default function StudioAttendance() {
   const { user } = useSession();
-  const { data: rows, loading, reload: reloadRows } = useAsync(() => db.attendance.list(), []);
+  const { data: rows, loading, error, reload: reloadRows } = useAsync(() => db.attendance.list(), []);
   const { data: staff, reload: reloadStaff } = useAsync(() => db.people.staff().catch(() => []), []);
   const names = Object.fromEntries((staff ?? []).map((item) => [item.id, item.name]));
   names[user?.id ?? ""] = user?.name ?? "You";
@@ -17,10 +17,16 @@ export default function StudioAttendance() {
   const lastMine = (rows ?? []).find((item) => item.userId === user?.id);
 
   if (loading && !rows) return <PageLoading />;
+  if (error && !rows) return <PageError message={error} onRetry={() => Promise.all([reloadRows(), reloadStaff()])} />;
 
   async function punch(type: "in" | "out") {
-    await db.attendance.clock(type);
-    toast.success(type === "in" ? "Clocked in." : "Clocked out.");
+    try {
+      await db.attendance.clock(type);
+      toast.success(type === "in" ? "Clocked in." : "Clocked out.");
+      await reloadRows();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not record punch.");
+    }
   }
 
   return (
