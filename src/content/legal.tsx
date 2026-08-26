@@ -105,8 +105,9 @@ export const LEGAL_DOCS: Record<LegalKind, LegalDoc> = {
               Prices are shown in Nigerian Naira (₦) unless stated otherwise. Ready-to-wear prices include the
               catalogue amount displayed at checkout. Made-to-measure and bespoke work may require deposits,
               balances, and revised quotes after fitting. Coupons apply only while active and may exclude certain
-              categories. Shipping, rush fees, alterations after approval, and third-party courier charges may be
-              extra.
+              categories. Rush fees and alterations after approval may be extra. EUNIK does not charge delivery on
+              your order — if you choose delivery, you are responsible for settling the dispatch rider or courier
+              yourself.
             </P>
             <P>
               We reserve the right to correct obvious pricing or description errors. If the corrected price is higher,
@@ -172,10 +173,11 @@ export const LEGAL_DOCS: Record<LegalKind, LegalDoc> = {
         body: (
           <>
             <P>
-              Pickup is available at our Ibadan location during published hours. Delivery within Nigeria uses
-              couriers we select or that you approve. Title and risk pass on pickup hand-over or when the parcel is
-              handed to the courier, except where consumer law requires otherwise. Provide a reachable phone number;
-              failed deliveries due to unreachable recipients may incur re-dispatch fees.
+              Pickup is available at our Ibadan location during published hours. If you choose delivery within
+              Nigeria, you arrange and pay the dispatch rider or courier yourself (or reimburse whoever delivers).
+              EUNIK does not add a delivery fee to your order total. Title and risk pass on pickup hand-over or when
+              the parcel is handed to the courier, except where consumer law requires otherwise. Provide a reachable
+              phone number; failed deliveries due to unreachable recipients may require a new dispatch at your cost.
             </P>
           </>
         ),
@@ -689,8 +691,10 @@ export const LEGAL_DOCS: Record<LegalKind, LegalDoc> = {
         body: (
           <>
             <P>
-              Inspect garments at pickup or within a short window after delivery for transit damage. Report issues
-              with photos and your order number. Hygiene and wear rules apply to exchanges.
+              Pickup is at EUNIK HQ, Ibadan. If you choose delivery, EUNIK does not charge shipping on the order —
+              you are responsible for arranging and settling any dispatch rider or courier yourself. Inspect
+              garments at pickup or within a short window after delivery for transit damage. Report issues with
+              photos and your order number. Hygiene and wear rules apply to exchanges.
             </P>
           </>
         ),

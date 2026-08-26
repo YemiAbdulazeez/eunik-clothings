@@ -54,7 +54,7 @@ export default function StudioPayments() {
     <div className="space-y-6">
       <PageHeader
         title="Payments"
-        subtitle="Review bank transfers: transaction number, receipt, then confirm or reject with a reason."
+        subtitle="Confirm bank transfers, and review cash / POS / offline bookings from keyed-in orders."
         onRefresh={() => reload()}
       />
       <div className="grid gap-4 sm:grid-cols-3">

@@ -23,6 +23,8 @@ export async function openPaystackCheckout(opts: {
   reference?: string;
   /** Skip auth verify — use public quote token verify instead */
   verifyWithToken?: string;
+  /** Public balance-pay link verify (no auth) */
+  verifyWithBalanceToken?: string;
 }): Promise<PaystackResult> {
   const type = opts.type ?? "full";
 
@@ -46,7 +48,10 @@ export async function openPaystackCheckout(opts: {
     });
   });
 
-  if (opts.verifyWithToken) {
+  if (opts.verifyWithBalanceToken) {
+    const { httpBalancePay } = await import("@/api/http");
+    await httpBalancePay.verify(opts.verifyWithBalanceToken, reference);
+  } else if (opts.verifyWithToken) {
     const { httpRfpQuote } = await import("@/api/http");
     await httpRfpQuote.verify(opts.verifyWithToken, reference);
   } else {

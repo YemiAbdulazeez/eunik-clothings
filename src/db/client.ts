@@ -5,6 +5,7 @@ import { ATELIER_ROLES, landingPath, readSession, writeSession } from "./session
 import { canSeeSection, defaultNav, isHouseStaff } from "../lib/rbac";
 import { emitCartChange } from "../lib/cartEvents";
 import { arrangeByNewestWithPins } from "../lib/productOrder";
+import { formatNaira } from "../lib/money";
 import {
   HTTP_ENABLED,
   httpAuth,
@@ -288,7 +289,7 @@ async function createOrderFromCart(payload: PlaceOrderPayload): Promise<Order> {
 
   const { subtotal, discount } = cartTotals({ ...cart, couponCode: payload.couponCode ?? cart.couponCode });
   const afterDiscount = subtotal - discount;
-  const shippingKobo = payload.fulfillment === "pickup_ibadan" ? 0 : 1500_00;
+  const shippingKobo = 0;
   const totalKobo = afterDiscount + shippingKobo;
   const first = cart.lines[0];
   const firstProduct = getState().products.find((item) => item.id === first.productId);
@@ -1242,14 +1243,11 @@ export const db = {
     },
   },
   checkout: {
-    async quoteShipping(fulfillment: "pickup_ibadan" | "delivery", _subtotalKobo: number) {
-      if (HTTP_ENABLED) {
-        if (fulfillment === "pickup_ibadan") return 0;
-        return 1500_00;
-      }
+    async quoteShipping(_fulfillment: "pickup_ibadan" | "delivery", _subtotalKobo: number) {
+      // Clients settle riders / couriers themselves — EUNIK never bills shipping on the order.
+      if (HTTP_ENABLED) return 0;
       await delay(80);
-      if (fulfillment === "pickup_ibadan") return 0;
-      return 1500_00;
+      return 0;
     },
     async placeOrder(payload: PlaceOrderPayload) {
       if (HTTP_ENABLED) {
@@ -1570,6 +1568,229 @@ export const db = {
         whatsappUrl: `https://api.whatsapp.com/send/?text=${encodeURIComponent(`Price ready: ${payUrl}`)}`,
         emailed: input.channel !== "whatsapp",
       };
+    },
+    async createManual(input: {
+      customer: { name: string; email: string; phone?: string };
+      kind?: Order["kind"];
+      fulfillment?: Order["fulfillment"];
+      address?: string;
+      notes?: string;
+      source?: "offline" | "manual" | "whatsapp" | "phone" | "walk_in";
+      status?: Order["status"];
+      paidKobo?: number;
+      paymentMethod?: "cash" | "pos" | "offline" | "bank_transfer";
+      paymentRef?: string;
+      shippingKobo?: number;
+      notifyClient?: boolean;
+      lines: {
+        productId?: string;
+        variantId?: string;
+        name?: string;
+        sku?: string;
+        qty?: number;
+        unitKobo?: number;
+        kind?: "rtw" | "mtm";
+      }[];
+    }) {
+      if (HTTP_ENABLED) return httpOrders.createManual(input);
+      await delay();
+      const actor = assertRoles(["super_admin", "manager", "desk"], "key in an offline order", "orders");
+      if (!input.lines?.length) throw new Error("Add at least one line item.");
+
+      let created!: Order;
+      mutate((draft) => {
+        let customer = draft.users.find(
+          (u) => u.email.toLowerCase() === input.customer.email.trim().toLowerCase() && u.role === "client",
+        );
+        if (!customer) {
+          customer = {
+            id: crypto.randomUUID(),
+            email: input.customer.email.trim().toLowerCase(),
+            name: input.customer.name.trim(),
+            firstName: input.customer.name.trim().split(/\s+/)[0] || "Client",
+            password: "offline",
+            role: "client",
+            phone: input.customer.phone ?? "",
+            city: "Ibadan",
+          };
+          draft.users.push(customer);
+        }
+
+        const resolved = input.lines.map((line) => {
+          const product = line.productId
+            ? draft.products.find((p) => p.id === line.productId)
+            : undefined;
+          const qty = Math.max(1, line.qty ?? 1);
+          const unitKobo =
+            line.unitKobo ??
+            (product?.priceOnRequest ? 0 : product?.priceKobo ?? 0);
+          const name = line.name?.trim() || product?.name;
+          if (!name) throw new Error("Each line needs a name or catalogue product.");
+          return {
+            product,
+            name,
+            sku: line.sku || product?.sku,
+            image: product?.image,
+            qty,
+            unitKobo,
+            kind: (line.kind ?? (input.kind === "ready_to_wear" ? "rtw" : "mtm")) as "rtw" | "mtm",
+            variantId: line.variantId,
+          };
+        });
+
+        const subtotal = resolved.reduce((s, l) => s + l.unitKobo * l.qty, 0);
+        const shippingKobo = 0;
+        const totalKobo = subtotal + shippingKobo;
+        const paidKobo = Math.max(0, Math.min(totalKobo, input.paidKobo ?? 0));
+        const number = allocateOrderNumber(draft);
+        const id = `order_${number.replace(/\W/g, "_")}`;
+        const depositKobo = Math.ceil((totalKobo * (draft.settings.depositPercent || 70)) / 100);
+
+        created = {
+          id,
+          number,
+          customerId: customer.id,
+          customerName: input.customer.name.trim(),
+          customerEmail: input.customer.email.trim().toLowerCase(),
+          customerPhone: input.customer.phone ?? "",
+          kind: input.kind ?? "ready_to_wear",
+          status: input.status ?? "confirmed",
+          productId: resolved[0]?.product?.id,
+          sku: resolved[0]?.sku,
+          name:
+            resolved.length === 1
+              ? resolved[0].name
+              : `${resolved.length} looks · ${resolved[0].name}`,
+          image: resolved[0]?.image,
+          qty: resolved.reduce((s, l) => s + l.qty, 0),
+          subtotalKobo: subtotal,
+          shippingKobo,
+          discountKobo: 0,
+          totalKobo,
+          depositKobo,
+          paidKobo,
+          fulfillment: input.fulfillment ?? "pickup_ibadan",
+          address: input.address,
+          source: input.source ?? "offline",
+          createdAt: nowIso(),
+        };
+        draft.orders.unshift(created);
+        for (const line of resolved) {
+          draft.orderItems.push({
+            id: crypto.randomUUID(),
+            orderId: id,
+            productId: line.product?.id,
+            variantId: line.variantId,
+            name: line.name,
+            sku: line.sku,
+            kind: line.kind,
+            qty: line.qty,
+            unitKobo: line.unitKobo,
+          });
+        }
+        if (paidKobo > 0) {
+          draft.payments.unshift({
+            id: crypto.randomUUID(),
+            orderId: id,
+            customerId: customer.id,
+            amountKobo: paidKobo,
+            type: paidKobo >= totalKobo && totalKobo > 0 ? "full" : "deposit",
+            method: input.paymentMethod ?? "offline",
+            status: "successful",
+            transactionNumber: input.paymentRef || `OFFLINE-${number}`,
+            submittedAt: nowIso(),
+          });
+        }
+      });
+      audit(actor.id, "order.manual", `#${created.number} · ${input.source ?? "offline"}`);
+      return {
+        orderId: created.id,
+        orderNumber: created.number,
+        totalKobo: created.totalKobo,
+        depositKobo: created.depositKobo,
+        paidKobo: created.paidKobo,
+        status: created.status,
+        customerCreated: false,
+      };
+    },
+    async requestBalance(
+      orderId: string,
+      input: { channel?: "email" | "whatsapp" | "both"; message?: string } = {},
+    ) {
+      if (HTTP_ENABLED) return httpOrders.requestBalance(orderId, input);
+      await delay();
+      assertRoles(["super_admin", "manager", "desk", "finance"], "request a balance", "orders");
+      const order = getState().orders.find((item) => item.id === orderId);
+      if (!order) throw new Error("Order not found.");
+      const balanceKobo = Math.max(0, order.totalKobo - order.paidKobo);
+      if (balanceKobo <= 0) throw new Error("This order has no outstanding balance.");
+      const token = crypto.randomUUID();
+      const payUrl = `${window.location.origin}/balance/pay/${token}`;
+      const whatsappUrl = `https://api.whatsapp.com/send/?text=${encodeURIComponent(
+        `Balance due on ${order.number}: ${formatNaira(balanceKobo)}\n${payUrl}`,
+      )}`;
+      return {
+        orderId: order.id,
+        orderNumber: order.number,
+        balanceKobo,
+        payUrl,
+        trackUrl: `${window.location.origin}/track`,
+        whatsappUrl,
+        emailed: (input.channel ?? "both") !== "whatsapp",
+        channel: input.channel ?? "both",
+      };
+    },
+    async recordPayment(
+      orderId: string,
+      input: {
+        amountKobo?: number;
+        payInFull?: boolean;
+        method?: "cash" | "pos" | "offline" | "bank_transfer";
+        type?: "deposit" | "balance" | "full";
+        transactionNumber?: string;
+        notifyClient?: boolean;
+      },
+    ) {
+      if (HTTP_ENABLED) return httpOrders.recordPayment(orderId, input);
+      await delay();
+      const actor = assertRoles(["super_admin", "manager", "desk", "finance"], "record a payment", "orders");
+      let paymentId = "";
+      let amountKobo = 0;
+      let updated!: Order;
+      mutate((draft) => {
+        const order = draft.orders.find((item) => item.id === orderId);
+        if (!order) throw new Error("Order not found.");
+        const due = Math.max(0, order.totalKobo - order.paidKobo);
+        if (due <= 0) throw new Error("This order has no outstanding balance.");
+        amountKobo = input.payInFull ? due : Math.min(due, Math.max(0, input.amountKobo ?? due));
+        if (amountKobo <= 0) throw new Error("Enter a payment amount greater than zero.");
+        paymentId = crypto.randomUUID();
+        const type =
+          input.type ||
+          (amountKobo >= due ? "full" : order.paidKobo <= 0 ? "deposit" : "balance");
+        draft.payments.unshift({
+          id: paymentId,
+          orderId,
+          customerId: order.customerId,
+          amountKobo,
+          type,
+          method: input.method ?? "offline",
+          status: "successful",
+          transactionNumber: input.transactionNumber || `STAFF-${order.number}`,
+          submittedAt: nowIso(),
+          verifiedBy: actor.id,
+        });
+        order.paidKobo += amountKobo;
+        if (
+          order.paidKobo >= order.depositKobo &&
+          (order.status === "pending_payment" || order.status === "awaiting_transfer")
+        ) {
+          order.status = "confirmed";
+        }
+        updated = { ...order };
+      });
+      audit(actor.id, "payment.record", `${orderId} · ${amountKobo}`);
+      return { ok: true, paymentId, amountKobo, order: updated };
     },
     async payBalance(orderId: string, payment: PlaceOrderPayload["payment"]) {
       if (HTTP_ENABLED) {
@@ -2251,8 +2472,19 @@ export const db = {
   leads: {
     async createFromWhatsApp(productId: string) {
       if (HTTP_ENABLED) {
-        await httpPublic.lead({ productId });
-        return { id: productId, productId, sku: "", status: "unclaimed" as const, createdAt: nowIso() };
+        const product = (await httpProducts.getById(productId).catch(() => null)) as {
+          sku?: string;
+          name?: string;
+        } | null;
+        await httpPublic.lead({ productId, sku: product?.sku });
+        return {
+          id: productId,
+          productId,
+          sku: product?.sku ?? "",
+          productName: product?.name,
+          status: "unclaimed" as const,
+          createdAt: nowIso(),
+        };
       }
       await delay(80);
       const actor = currentUser();

@@ -123,6 +123,33 @@ export function orderKindLabel(kind: string): string {
   return ORDER_KIND_LABEL[kind] ?? titleFromSnake(kind);
 }
 
+const ORDER_SOURCE_LABEL: Record<string, string> = {
+  online: "Website",
+  offline: "Keyed in (manual entry)",
+  manual: "Keyed in (manual entry)",
+  whatsapp: "WhatsApp (manual entry)",
+  phone: "Phone (manual entry)",
+  walk_in: "Walk-in (manual entry)",
+};
+
+/** Website checkout vs studio key-in channel */
+export function orderSourceLabel(source?: string | null): string {
+  if (!source) return "Website";
+  return ORDER_SOURCE_LABEL[source] ?? titleFromSnake(source);
+}
+
+/** True when the order was entered by staff (not a website checkout). */
+export function isKeyedInOrder(source?: string | null): boolean {
+  return Boolean(source && source !== "online");
+}
+
+export const ORDER_SOURCE_FILTERS = [
+  { key: "online", label: "Website" },
+  { key: "whatsapp", label: "WhatsApp (manual entry)" },
+  { key: "phone", label: "Phone (manual entry)" },
+  { key: "walk_in", label: "Walk-in (manual entry)" },
+] as const;
+
 export function stageLabel(stage: ProductionStage | string): string {
   return STAGE_LABEL[stage as ProductionStage] ?? titleFromSnake(stage);
 }

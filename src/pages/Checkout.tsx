@@ -19,20 +19,32 @@ export default function Checkout() {
   const { user, refresh } = useSession();
   const navigate = useNavigate();
   const { data: settings } = useAsync(() => db.settings.get(), []);
-  const [fulfillment, setFulfillment] = useState<"pickup_ibadan" | "delivery">("pickup_ibadan");
+  const [fulfillment, setFulfillment] = useState<"pickup_ibadan" | "delivery">(
+    "pickup_ibadan",
+  );
   const [agreedPolicies, setAgreedPolicies] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payMode, setPayMode] = useState<"deposit" | "full">("deposit");
-  const totals = cart ? db.cart.totals(cart) : { subtotal: 0, discount: 0, payable: 0 };
+  const totals = cart
+    ? db.cart.totals(cart)
+    : { subtotal: 0, discount: 0, payable: 0 };
   const { data: shipping } = useAsync(
     () => db.checkout.quoteShipping(fulfillment, totals.payable),
     [fulfillment, totals.payable],
   );
-  const hasPriceRequest = cart?.lines.some((line) => line.priceOnRequest) ?? false;
+  const hasPriceRequest =
+    cart?.lines.some((line) => line.priceOnRequest) ?? false;
   const merchandise = totals.payable + (shipping ?? 0);
-  const depositPercent = Math.min(100, Math.max(70, settings?.depositPercent ?? 70));
-  const depositAmount = merchandise > 0 ? Math.min(merchandise, Math.ceil((merchandise * depositPercent) / 100)) : 0;
-  const amount = merchandise <= 0 ? 0 : payMode === "deposit" ? depositAmount : merchandise;
+  const depositPercent = Math.min(
+    100,
+    Math.max(70, settings?.depositPercent ?? 70),
+  );
+  const depositAmount =
+    merchandise > 0
+      ? Math.min(merchandise, Math.ceil((merchandise * depositPercent) / 100))
+      : 0;
+  const amount =
+    merchandise <= 0 ? 0 : payMode === "deposit" ? depositAmount : merchandise;
   const balanceIfDeposit = Math.max(0, merchandise - depositAmount);
 
   useEffect(() => {
@@ -45,10 +57,14 @@ export default function Checkout() {
       return;
     }
     if (!agreedPolicies) {
-      toast.error("Please confirm you agree to our policies and terms before paying.");
+      toast.error(
+        "Please confirm you agree to our policies and terms before paying.",
+      );
       return;
     }
-    const form = document.getElementById("checkout-form") as HTMLFormElement | null;
+    const form = document.getElementById(
+      "checkout-form",
+    ) as HTMLFormElement | null;
     if (form && !form.reportValidity()) return;
     const data = form ? new FormData(form) : new FormData();
     setBusy(true);
@@ -71,8 +87,12 @@ export default function Checkout() {
           couponCode: cart.couponCode,
         });
         if ("needsLogin" in placed && placed.needsLogin) {
-          toast.message("That email already has a client book. Sign in to continue.");
-          navigate(`/account/login?next=/checkout&email=${encodeURIComponent(email)}`);
+          toast.message(
+            "That email already has a client book. Sign in to continue.",
+          );
+          navigate(
+            `/account/login?next=/checkout&email=${encodeURIComponent(email)}`,
+          );
           return;
         }
         // Guest checkout opens an account and sets cookies — refresh session before paying
@@ -82,7 +102,8 @@ export default function Checkout() {
 
         const orderId = placed.orderId;
         const payType = payMode === "deposit" ? "deposit" : "full";
-        const payAmount = payMode === "deposit" ? placed.depositKobo : placed.totalKobo;
+        const payAmount =
+          payMode === "deposit" ? placed.depositKobo : placed.totalKobo;
         if (payAmount > 0) {
           if (choice.method === "paystack") {
             const result = await openPaystackCheckout({
@@ -105,7 +126,9 @@ export default function Checkout() {
               receiptUrl: choice.receiptUrl,
               type: payType,
             });
-            toast.success("Transfer submitted — waiting for house confirmation.");
+            toast.success(
+              "Transfer submitted — waiting for house confirmation.",
+            );
           }
         } else {
           toast.success(
@@ -115,7 +138,9 @@ export default function Checkout() {
           );
         }
         if ("accountCreated" in placed && placed.accountCreated) {
-          toast.message("We emailed your temporary password — it stays valid until you change it from Profile.");
+          toast.message(
+            "We emailed your temporary password — it stays valid until you change it from Profile.",
+          );
         }
         await refreshCart();
         try {
@@ -139,8 +164,12 @@ export default function Checkout() {
 
       const ensured = await db.auth.ensureAtCheckout({ email, name, phone });
       if ("needsLogin" in ensured) {
-        toast.message("That email already has a client book. Sign in to continue.");
-        navigate(`/account/login?next=/checkout&email=${encodeURIComponent(ensured.email)}`);
+        toast.message(
+          "That email already has a client book. Sign in to continue.",
+        );
+        navigate(
+          `/account/login?next=/checkout&email=${encodeURIComponent(ensured.email)}`,
+        );
         return;
       }
       await refresh();
@@ -157,11 +186,21 @@ export default function Checkout() {
       });
       await refreshCart();
       if (ensured.created) {
-        sessionStorage.setItem("eunik-welcome", JSON.stringify({ email: ensured.user.email }));
-        if (ensured.mailTo) window.open(ensured.mailTo, "_blank", "noopener,noreferrer");
-        toast.success("Account opened. Check the mailbox on this demo for sign-in details.");
+        sessionStorage.setItem(
+          "eunik-welcome",
+          JSON.stringify({ email: ensured.user.email }),
+        );
+        if (ensured.mailTo)
+          window.open(ensured.mailTo, "_blank", "noopener,noreferrer");
+        toast.success(
+          "Account opened. Check the mailbox on this demo for sign-in details.",
+        );
       } else {
-        toast.success(choice.method === "paystack" ? "Demo Paystack recorded." : "Receipt sent to the house.");
+        toast.success(
+          choice.method === "paystack"
+            ? "Demo Paystack recorded."
+            : "Receipt sent to the house.",
+        );
       }
       navigate(`/orders/thank-you/${order.id}`);
     } catch (error) {
@@ -178,20 +217,37 @@ export default function Checkout() {
         <form id="checkout-form" className="space-y-4">
           {!user ? (
             <p className="rounded-xl border border-line bg-paper/60 px-3 py-2 text-sm text-muted">
-              No account needed to pay. We will open a client book with your email and send temporary sign-in details.
+              No account needed to pay. We will open a client book with your
+              email and send temporary sign-in details.
             </p>
           ) : null}
           <label className="block">
             <span className="os-label">Full name</span>
-            <input name="name" required defaultValue={user?.name} className="mt-1 w-full border border-line px-3 py-2 text-ink" />
+            <input
+              name="name"
+              required
+              defaultValue={user?.name}
+              className="mt-1 w-full border border-line px-3 py-2 text-ink"
+            />
           </label>
           <label className="block">
             <span className="os-label">Email</span>
-            <input name="email" type="email" required defaultValue={user?.email} className="mt-1 w-full border border-line px-3 py-2 text-ink" />
+            <input
+              name="email"
+              type="email"
+              required
+              defaultValue={user?.email}
+              className="mt-1 w-full border border-line px-3 py-2 text-ink"
+            />
           </label>
           <label className="block">
             <span className="os-label">Phone</span>
-            <input name="phone" required defaultValue={user?.phone} className="mt-1 w-full border border-line px-3 py-2 text-ink" />
+            <input
+              name="phone"
+              required
+              defaultValue={user?.phone}
+              className="mt-1 w-full border border-line px-3 py-2 text-ink"
+            />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <button
@@ -199,21 +255,45 @@ export default function Checkout() {
               onClick={() => setFulfillment("pickup_ibadan")}
               className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${fulfillment === "pickup_ibadan" ? "border-ink" : "border-line"}`}
             >
-              Pickup · Ibadan HQ
+              <span className="block font-medium text-ink">
+                Pickup · Ibadan HQ
+              </span>
+              <span className="mt-1 block text-xs text-muted">
+                Collect from the house when ready.
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setFulfillment("delivery")}
               className={`rounded-2xl border p-4 text-left transition-colors hover:border-ink ${fulfillment === "delivery" ? "border-ink" : "border-line"}`}
             >
-              Delivery · Nigeria
+              <span className="block font-medium text-ink">
+                Delivery · Nigeria
+              </span>
+              <span className="mt-1 block text-xs text-muted">
+                No delivery fee on this order — you settle the rider or courier
+                yourself.
+              </span>
             </button>
           </div>
           {fulfillment === "delivery" ? (
-            <label className="block">
-              <span className="os-label">Address</span>
-              <textarea name="address" required className="mt-1 w-full border border-line px-3 py-2 text-ink" />
-            </label>
+            <>
+              <label className="block">
+                <span className="os-label">Address</span>
+                <textarea
+                  name="address"
+                  required
+                  className="mt-1 w-full border border-line px-3 py-2 text-ink"
+                />
+              </label>
+              <p className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-sm leading-6 text-ink">
+                <span className="font-medium">Dispatch is on you.</span> EUNIK
+                does not charge shipping. When your order is ready, you arrange
+                and pay any dispatch rider or courier yourself (or reimburse
+                whoever delivers it). We can get you a dispatch on request, why
+                you negotiate with the driver or dispatch/delivery service.
+              </p>
+            </>
           ) : (
             <p className="text-sm">{settings?.pickupLocation}</p>
           )}
@@ -227,23 +307,48 @@ export default function Checkout() {
             />
             <span>
               By continuing to order and pay, I agree to EUNIK’s{" "}
-              <Link to="/policies/terms" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+              <Link
+                to="/policies/terms"
+                className="underline decoration-ink/30 underline-offset-2 hover:text-ink"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Terms &amp; Conditions
               </Link>
               ,{" "}
-              <Link to="/policies/order" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+              <Link
+                to="/policies/order"
+                className="underline decoration-ink/30 underline-offset-2 hover:text-ink"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Order Policy
               </Link>
               ,{" "}
-              <Link to="/policies/jobs" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+              <Link
+                to="/policies/jobs"
+                className="underline decoration-ink/30 underline-offset-2 hover:text-ink"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Job Taking Policy
               </Link>
               ,{" "}
-              <Link to="/policies/privacy" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+              <Link
+                to="/policies/privacy"
+                className="underline decoration-ink/30 underline-offset-2 hover:text-ink"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Privacy Policy
               </Link>
               , and{" "}
-              <Link to="/policies/ndpr" className="underline decoration-ink/30 underline-offset-2 hover:text-ink" target="_blank" rel="noreferrer">
+              <Link
+                to="/policies/ndpr"
+                className="underline decoration-ink/30 underline-offset-2 hover:text-ink"
+                target="_blank"
+                rel="noreferrer"
+              >
                 NDPR Notice
               </Link>
               .
@@ -252,7 +357,11 @@ export default function Checkout() {
         </form>
         <div>
           <p className="mb-2 font-alt text-2xl text-ink">
-            {amount > 0 ? `Pay ${formatNaira(amount)}` : hasPriceRequest ? "Request for price" : "No payment due"}
+            {amount > 0
+              ? `Pay ${formatNaira(amount)}`
+              : hasPriceRequest
+                ? "Request for price"
+                : "No payment due"}
           </p>
           <p className="mb-4 text-sm">
             {hasPriceRequest && merchandise === 0
@@ -268,8 +377,13 @@ export default function Checkout() {
                 onClick={() => setPayMode("deposit")}
                 className={`rounded-2xl border p-3 text-left text-sm transition-colors hover:border-ink ${payMode === "deposit" ? "border-ink bg-paper" : "border-line"}`}
               >
-                <p className="font-medium text-ink">Pay {depositPercent}% now</p>
-                <p className="text-muted">{formatNaira(depositAmount)} · balance {formatNaira(balanceIfDeposit)} later</p>
+                <p className="font-medium text-ink">
+                  Pay {depositPercent}% now
+                </p>
+                <p className="text-muted">
+                  {formatNaira(depositAmount)} · balance{" "}
+                  {formatNaira(balanceIfDeposit)} later
+                </p>
               </button>
               <button
                 type="button"
@@ -288,24 +402,34 @@ export default function Checkout() {
                   <span>
                     {line.name ?? "Look"} × {line.qty}
                     <span className="mt-0.5 block text-xs text-muted">
-                      {line.kind === "mtm" ? "Made to measure" : "Ready to wear"}
+                      {line.kind === "mtm"
+                        ? "Made to measure"
+                        : "Ready to wear"}
                       {line.priceOnRequest ? " · Request for price" : ""}
                     </span>
                   </span>
                   <span>
-                    {line.priceOnRequest ? "Request for price" : formatNaira((line.priceKobo ?? 0) * line.qty)}
+                    {line.priceOnRequest
+                      ? "Request for price"
+                      : formatNaira((line.priceKobo ?? 0) * line.qty)}
                   </span>
                 </li>
               ))}
-              {shipping != null && fulfillment === "delivery" ? (
-                <li className="flex justify-between text-muted">
-                  <span>Delivery</span>
-                  <span>{formatNaira(shipping)}</span>
+              {fulfillment === "delivery" ? (
+                <li className="flex justify-between gap-3 text-muted">
+                  <span>Delivery / dispatch</span>
+                  <span className="text-right">
+                    You settle the rider yourself · ₦0 on this order
+                  </span>
                 </li>
               ) : null}
               <li className="flex justify-between border-t border-line pt-2 font-medium text-ink">
                 <span>Subtotal</span>
-                <span>{hasPriceRequest && totals.subtotal === 0 ? "—" : formatNaira(totals.subtotal)}</span>
+                <span>
+                  {hasPriceRequest && totals.subtotal === 0
+                    ? "—"
+                    : formatNaira(totals.subtotal)}
+                </span>
               </li>
             </ul>
           ) : null}
@@ -317,7 +441,9 @@ export default function Checkout() {
             placeOnly={amount === 0}
           />
           {!agreedPolicies ? (
-            <p className="mt-3 text-sm text-muted">Tick the policy agreement above to enable payment.</p>
+            <p className="mt-3 text-sm text-muted">
+              Tick the policy agreement above to enable payment.
+            </p>
           ) : null}
         </div>
       </section>

@@ -53,7 +53,7 @@ export type ProductionStage =
   | "ready"
   | "completed";
 
-export type PaymentMethod = "paystack" | "bank_transfer";
+export type PaymentMethod = "paystack" | "bank_transfer" | "cash" | "pos" | "offline";
 export type PaymentStatus =
   | "pending"
   | "awaiting_verification"
@@ -248,6 +248,9 @@ export type Order = {
   paidKobo: number;
   fulfillment: "pickup_ibadan" | "delivery";
   address?: string;
+  notes?: string | null;
+  /** How the order entered the book: website checkout vs keyed-in channels */
+  source?: "online" | "offline" | "manual" | "whatsapp" | "phone" | "walk_in" | string;
   createdAt: string;
   measurementSnapshot?: Record<string, number>;
   items?: OrderItem[];
@@ -333,6 +336,8 @@ export type ChannelLead = {
   id: string;
   productId: string;
   sku: string;
+  /** Catalogue name when the API joins products */
+  productName?: string;
   status: "unclaimed" | "claimed";
   orderNumber?: string;
   createdAt: string;

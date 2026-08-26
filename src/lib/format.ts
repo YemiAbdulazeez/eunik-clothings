@@ -1,4 +1,4 @@
-export { statusLabel, roleLabel, orderKindLabel, stageLabel } from "./statusLabels";
+export { statusLabel, roleLabel, orderKindLabel, orderSourceLabel, isKeyedInOrder, ORDER_SOURCE_FILTERS, stageLabel } from "./statusLabels";
 
 export function formatWhen(value: string): string {
   const date = new Date(value);

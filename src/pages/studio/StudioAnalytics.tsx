@@ -49,7 +49,7 @@ export default function StudioAnalytics() {
         subtitle={
           principal
             ? "Sales and profit for finance; site traffic for the house principal only."
-            : "Collections are successful Paystack and verified transfers."
+            : "Collections are successful Paystack, verified transfers, cash, POS, and offline bookings."
         }
         onRefresh={() => refresh()}
         actions={

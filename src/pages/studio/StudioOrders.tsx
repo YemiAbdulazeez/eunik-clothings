@@ -1,11 +1,19 @@
 import { Link } from "react-router-dom";
-import { PageHeader, PageLoading, SectionCard, StatusBadge, StatCard } from "@/components/os/ui";
+import { PageHeader, PageLoading, SectionCard, StatusBadge, StatCard, OsButton } from "@/components/os/ui";
+import StudioManualOrderForm from "@/components/studio/StudioManualOrderForm";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { statusLabel, statusTone } from "@/lib/format";
+import {
+  statusLabel,
+  statusTone,
+  orderSourceLabel,
+  isKeyedInOrder,
+  ORDER_SOURCE_FILTERS,
+} from "@/lib/format";
 import { useMemo, useState } from "react";
 import type { Order } from "@/db/types";
+import { useSession } from "@/context/SessionProvider";
 
 /** Prefer floor stage so /studio/orders matches the production board. */
 function displayStatus(order: Order): string {
@@ -19,19 +27,54 @@ function displayStatus(order: Order): string {
   return order.status;
 }
 
+const STATUS_KIND_FILTERS = ["all", "production", "awaiting_transfer", "ready", "bespoke", "made_to_measure"] as const;
+
 export default function StudioOrders() {
+  const { user } = useSession();
   const { data: orders, loading, reload } = useAsync(() => db.orders.listAll(), []);
-  const [filter, setFilter] = useState("all");
-  const rows = useMemo(
-    () => (orders ?? []).filter((item) => (filter === "all" ? true : item.status === filter || item.kind === filter)),
-    [orders, filter],
-  );
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [manualOpen, setManualOpen] = useState(false);
+
+  const rows = useMemo(() => {
+    return (orders ?? []).filter((item) => {
+      const statusOk =
+        statusFilter === "all" || item.status === statusFilter || item.kind === statusFilter;
+      const source = item.source || "online";
+      const sourceOk =
+        sourceFilter === "all" ||
+        source === sourceFilter ||
+        (sourceFilter === "offline" && (source === "offline" || source === "manual"));
+      return statusOk && sourceOk;
+    });
+  }, [orders, statusFilter, sourceFilter]);
+
+  const canKeyIn =
+    user?.role === "super_admin" || user?.role === "manager" || user?.role === "desk";
 
   if (loading && !orders) return <PageLoading />;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Orders" subtitle="Ready to wear, made to measure, and custom orders." onRefresh={() => reload()} />
+      <PageHeader
+        title="Orders"
+        subtitle="Ready to wear, made to measure, and custom orders — including offline key-ins."
+        onRefresh={() => reload()}
+        actions={
+          canKeyIn ? (
+            <OsButton onClick={() => setManualOpen((v) => !v)}>
+              {manualOpen ? "Hide form" : "Key in offline order"}
+            </OsButton>
+          ) : null
+        }
+      />
+      {manualOpen ? (
+        <StudioManualOrderForm
+          open={manualOpen}
+          onClose={() => setManualOpen(false)}
+          onCreated={() => void reload()}
+        />
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="All" value={String(orders?.length ?? 0)} />
         <StatCard label="In production" value={String(orders?.filter((item) => item.status === "production").length ?? 0)} />
@@ -42,18 +85,46 @@ export default function StudioOrders() {
           tone="alert"
         />
       </div>
-      <div className="flex flex-wrap gap-2 rounded-full border border-line bg-white p-1">
-        {["all", "production", "awaiting_transfer", "ready", "bespoke", "made_to_measure"].map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(key)}
-            className={`rounded-full px-4 py-1.5 text-sm capitalize ${filter === key ? "bg-ink text-white" : "text-ink"}`}
-          >
-            {key === "all" ? "All" : statusLabel(key)}
-          </button>
-        ))}
+
+      <div className="space-y-2">
+        <p className="os-label px-1">Status / kind</p>
+        <div className="flex flex-wrap gap-2 rounded-full border border-line bg-white p-1">
+          {STATUS_KIND_FILTERS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className={`rounded-full px-4 py-1.5 text-sm capitalize ${statusFilter === key ? "bg-ink text-white" : "text-ink"}`}
+            >
+              {key === "all" ? "All" : statusLabel(key)}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <div className="space-y-2">
+        <p className="os-label px-1">Source</p>
+        <div className="flex flex-wrap gap-2 rounded-full border border-line bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setSourceFilter("all")}
+            className={`rounded-full px-4 py-1.5 text-sm ${sourceFilter === "all" ? "bg-ink text-white" : "text-ink"}`}
+          >
+            All sources
+          </button>
+          {ORDER_SOURCE_FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSourceFilter(key)}
+              className={`rounded-full px-4 py-1.5 text-sm ${sourceFilter === key ? "bg-ink text-white" : "text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <SectionCard>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -63,6 +134,7 @@ export default function StudioOrders() {
                 <th>Client</th>
                 <th>Look</th>
                 <th>Kind</th>
+                <th>Source</th>
                 <th>Status</th>
                 <th>Paid</th>
                 <th>Balance</th>
@@ -87,6 +159,12 @@ export default function StudioOrders() {
                   </td>
                   <td>{order.name}</td>
                   <td className="capitalize">{statusLabel(order.kind)}</td>
+                  <td>
+                    <StatusBadge
+                      label={orderSourceLabel(order.source)}
+                      tone={isKeyedInOrder(order.source) ? "gold" : "muted"}
+                    />
+                  </td>
                   <td>
                     <div className="flex flex-wrap items-center gap-2">
                       {order.priceOnRequest ? (

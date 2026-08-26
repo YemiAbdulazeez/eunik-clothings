@@ -6,7 +6,7 @@ import ProductImageSlider, { productGallery } from "@/components/ProductImageSli
 import WishlistHeart from "@/components/WishlistHeart";
 import { db, type Product } from "@/db/database";
 import { formatNaira } from "@/lib/money";
-import { openProductWhatsApp } from "@/lib/whatsapp";
+import { orderWhatsAppUrl, trackWhatsAppOrder } from "@/lib/whatsapp";
 import { shopHref } from "@/lib/osNav";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/context/CartProvider";
@@ -62,13 +62,15 @@ export default function ProductCard({ product }: { product: Product }) {
   ) : null;
 
   const whatsAppButton = showWhatsApp ? (
-    <button
-      type="button"
-      onClick={() => void openProductWhatsApp(product)}
-      className="inline-flex items-center justify-center gap-2 rounded-full border-2 bg-white px-3 py-2 text-[13px] text-black hover:border-green-600 hover:bg-green-600 hover:text-white"
+    <a
+      href={orderWhatsAppUrl(product)}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => trackWhatsAppOrder(product)}
+      className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#25D366]/40 bg-white px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#25D366] hover:bg-[#25D366] hover:text-white"
     >
       WhatsApp
-    </button>
+    </a>
   ) : null;
 
   const media = (

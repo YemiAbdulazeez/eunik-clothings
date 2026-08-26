@@ -436,6 +436,115 @@ export const httpOrders = {
       emailed: boolean;
     }>(`/orders/${encodeURIComponent(id)}/send-price`, { method: "POST", body });
   },
+  /** Studio: key in an offline / WhatsApp / walk-in order like a regular checkout */
+  async createManual(payload: {
+    customer: { name: string; email: string; phone?: string };
+    kind?: "ready_to_wear" | "made_to_measure" | "bespoke" | "alteration";
+    fulfillment?: "pickup_ibadan" | "delivery";
+    address?: string;
+    notes?: string;
+      source?: "offline" | "manual" | "whatsapp" | "phone" | "walk_in";
+    status?: string;
+    paidKobo?: number;
+    paymentMethod?: "cash" | "pos" | "offline" | "bank_transfer";
+    paymentRef?: string;
+    shippingKobo?: number;
+    notifyClient?: boolean;
+    lines: {
+      productId?: string;
+      variantId?: string;
+      name?: string;
+      sku?: string;
+      qty?: number;
+      unitKobo?: number;
+      kind?: "rtw" | "mtm";
+    }[];
+  }) {
+    return api<{
+      orderId: string;
+      orderNumber: string;
+      totalKobo: number;
+      depositKobo: number;
+      paidKobo: number;
+      status: string;
+      customerCreated: boolean;
+    }>("/orders/manual", { method: "POST", body: payload });
+  },
+  async requestBalance(
+    id: string,
+    body: { channel?: "email" | "whatsapp" | "both"; message?: string } = {},
+  ) {
+    return api<{
+      orderId: string;
+      orderNumber: string;
+      balanceKobo: number;
+      payUrl: string;
+      trackUrl: string;
+      whatsappUrl: string;
+      emailed: boolean;
+      channel: string;
+    }>(`/orders/${encodeURIComponent(id)}/request-balance`, { method: "POST", body });
+  },
+  async recordPayment(
+    id: string,
+    body: {
+      amountKobo?: number;
+      payInFull?: boolean;
+      method?: "cash" | "pos" | "offline" | "bank_transfer";
+      type?: "deposit" | "balance" | "full";
+      transactionNumber?: string;
+      notifyClient?: boolean;
+    },
+  ) {
+    return api<{
+      ok: boolean;
+      paymentId: string;
+      amountKobo: number;
+      order: unknown;
+    }>(`/orders/${encodeURIComponent(id)}/record-payment`, { method: "POST", body });
+  },
+};
+
+/** Public token links for outstanding balance (after deposit) */
+export const httpBalancePay = {
+  async get(token: string) {
+    return api<{
+      order: {
+        id: string;
+        number: string;
+        name: string;
+        status: string;
+        totalKobo: number;
+        depositKobo: number;
+        paidKobo: number;
+        customerEmail: string;
+        customerName: string;
+      };
+      amountDueKobo: number;
+      settled: boolean;
+      paystackEnabled: boolean;
+      bank: { bankName?: string; accountName?: string; accountNumber?: string; narrationHint?: string } | null;
+    }>(`/balance/pay/${encodeURIComponent(token)}`, { skipRefresh: true });
+  },
+  async paystack(token: string) {
+    return api<{ accessCode: string; reference: string; amountKobo: number; orderId: string }>(
+      `/balance/pay/${encodeURIComponent(token)}/paystack`,
+      { method: "POST", body: {}, skipRefresh: true },
+    );
+  },
+  async verify(token: string, reference: string) {
+    return api<{ status: string }>(`/balance/pay/${encodeURIComponent(token)}/verify`, {
+      method: "POST",
+      body: { reference },
+      skipRefresh: true,
+    });
+  },
+  async transfer(token: string, payload: { transactionNumber: string; receiptUrl?: string }) {
+    return api<{ ok: boolean; orderId: string; orderNumber: string }>(
+      `/balance/pay/${encodeURIComponent(token)}/transfer`,
+      { method: "POST", body: payload, skipRefresh: true },
+    );
+  },
 };
 
 /** Public token links for request-for-price pay / cancel (no auth) */
@@ -842,8 +951,16 @@ export const httpAnalytics = {
 
 export const httpLeads = {
   async list() {
-    const data = await api<{ leads: unknown[] }>("/studio/leads");
-    return data.leads;
+    const data = await api<{ leads: Record<string, unknown>[] }>("/studio/leads");
+    return data.leads.map((row) => ({
+      id: String(row.id),
+      productId: String(row.product_id ?? row.productId ?? ""),
+      sku: String(row.sku ?? ""),
+      productName: row.product_name != null ? String(row.product_name) : row.productName != null ? String(row.productName) : undefined,
+      status: (row.status === "claimed" ? "claimed" : "unclaimed") as "unclaimed" | "claimed",
+      orderNumber: row.order_number != null ? String(row.order_number) : row.orderNumber != null ? String(row.orderNumber) : undefined,
+      createdAt: String(row.created_at ?? row.createdAt ?? ""),
+    }));
   },
   async claim(id: string, opts: { openTicket?: boolean } = {}) {
     return api<{ ok: boolean; orderNumber?: string }>(`/studio/leads/${id}/claim`, { method: "POST", body: opts });

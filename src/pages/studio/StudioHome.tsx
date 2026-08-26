@@ -120,16 +120,26 @@ export default function StudioHome() {
           },
         ]
       : []),
-    ...unclaimed.map((lead) => ({
-      id: lead.id,
-      title: `WhatsApp lead ${lead.sku}`,
-      detail: "Unclaimed — desk should own this click.",
-      actionLabel: "Claim",
-      onAction: () =>
-        db.leads.claim(lead.id, { openTicket: true }).then(({ orderNumber }) =>
-          toast.success(orderNumber ? `Claimed — order #${orderNumber} opened.` : "Lead claimed."),
-        ),
-    })),
+    ...unclaimed.map((lead) => {
+      const look =
+        lead.productName?.trim() ||
+        (lead.sku && lead.sku !== "null" ? lead.sku : "") ||
+        "a website look";
+      return {
+        id: lead.id,
+        title: `Someone asked about ${look} on WhatsApp`,
+        detail: "No one is handling this yet. Claim it so the front desk follows up.",
+        actionLabel: "I'll take this",
+        onAction: () =>
+          db.leads.claim(lead.id, { openTicket: true }).then(({ orderNumber }) =>
+            toast.success(
+              orderNumber
+                ? `You're on it — follow-up ticket ${orderNumber} opened.`
+                : "You're on it — this WhatsApp enquiry is yours.",
+            ),
+          ),
+      };
+    }),
     ...((fabrics ?? []).filter((item) => item.status === "low").map((item) => ({
       id: item.id,
       title: `Low fabric · ${item.name}`,
@@ -196,7 +206,7 @@ export default function StudioHome() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {canAnalytics ? (
             <>
-              <StatCard label="Collected" value={formatNaira(overview?.revenueKobo ?? 0)} hint="Successful Paystack + transfers" />
+              <StatCard label="Collected" value={formatNaira(overview?.revenueKobo ?? 0)} hint="Successful Paystack, transfers, cash & offline" />
               <StatCard label="Outstanding" value={formatNaira(overview?.outstandingKobo ?? 0)} tone="gold" hint="Balances still on the book" />
             </>
           ) : null}
@@ -208,7 +218,7 @@ export default function StudioHome() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard label="Unclaimed leads" value={String(unclaimed.length)} />
+          <StatCard label="WhatsApp enquiries waiting" value={String(unclaimed.length)} />
           <StatCard label="New requests" value={String(newRequests.length)} />
           <StatCard label="Appointments today" value={String((appointments ?? []).filter((item) => item.date === today).length)} />
         </div>

@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/os/ui";
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira } from "@/lib/money";
-import { openProductWhatsApp } from "@/lib/whatsapp";
+import { orderWhatsAppUrl, trackWhatsAppOrder } from "@/lib/whatsapp";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/context/CartProvider";
 import { inAccount } from "@/lib/osNav";
@@ -199,9 +199,15 @@ export default function ProductDetail() {
             </LoadingButton>
           ) : null}
           {showWhatsApp ? (
-            <LoadingButton variant="ghost" onClick={() => void openProductWhatsApp(look)}>
+            <a
+              href={orderWhatsAppUrl(look)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackWhatsAppOrder(look)}
+              className="os-pill inline-flex items-center justify-center gap-2 border-2 border-[#25D366]/40 bg-white px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-[#25D366] hover:bg-[#25D366] hover:text-white"
+            >
               Order on WhatsApp
-            </LoadingButton>
+            </a>
           ) : null}
         </div>
         {canShopHere ? (

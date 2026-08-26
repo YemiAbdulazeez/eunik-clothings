@@ -65,6 +65,7 @@ import ThankYou from "./pages/ThankYou";
 import TrackOrder from "./pages/Track";
 import QuotePayPage from "./pages/QuotePay";
 import QuoteCancelPage from "./pages/QuoteCancel";
+import BalancePayPage from "./pages/BalancePay";
 
 export default function App() {
   return (
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/track" element={<TrackOrder />} />
           <Route path="/quote/pay/:token" element={<QuotePayPage />} />
           <Route path="/quote/cancel/:token" element={<QuoteCancelPage />} />
+          <Route path="/balance/pay/:token" element={<BalancePayPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders/thank-you/:id" element={<ThankYou />} />

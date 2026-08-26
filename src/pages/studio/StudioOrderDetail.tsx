@@ -6,7 +6,7 @@ import { Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, Sta
 import { db } from "@/db/database";
 import { useAsync } from "@/hooks/useAsync";
 import { formatNaira, nairaToKobo } from "@/lib/money";
-import { formatWhen, statusLabel, statusTone, stageLabel } from "@/lib/format";
+import { formatWhen, statusLabel, statusTone, stageLabel, orderSourceLabel, isKeyedInOrder } from "@/lib/format";
 import type { OrderStatus, Payment } from "@/db/types";
 
 const FLOW: OrderStatus[] = [
@@ -35,6 +35,9 @@ export default function StudioOrderDetail() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [lastLinks, setLastLinks] = useState<{ payUrl: string; cancelUrl: string; whatsappUrl: string } | null>(null);
+  const [balanceBusy, setBalanceBusy] = useState(false);
+  const [recordBusy, setRecordBusy] = useState(false);
+  const [balanceLinks, setBalanceLinks] = useState<{ payUrl: string; whatsappUrl: string } | null>(null);
 
   const awaitingBank = (payments ?? []).filter(
     (item) => item.method === "bank_transfer" && item.status === "awaiting_verification",
@@ -127,6 +130,60 @@ export default function StudioOrderDetail() {
     }
   }
 
+  async function requestBalance(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!order || balanceBusy) return;
+    const data = new FormData(event.currentTarget);
+    const channel = String(data.get("channel") || "both") as "email" | "whatsapp" | "both";
+    setBalanceBusy(true);
+    try {
+      const result = await db.orders.requestBalance(order.id, {
+        channel,
+        message: String(data.get("message") || "").trim() || undefined,
+      });
+      setBalanceLinks({ payUrl: result.payUrl, whatsappUrl: result.whatsappUrl });
+      if (channel === "whatsapp" || channel === "both") {
+        window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
+      }
+      toast.success(
+        result.emailed
+          ? `Balance request sent — client emailed (${formatNaira(result.balanceKobo)}).`
+          : `WhatsApp opened with balance pay link (${formatNaira(result.balanceKobo)}).`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not request balance.");
+    } finally {
+      setBalanceBusy(false);
+    }
+  }
+
+  async function recordOfflinePayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!order || recordBusy) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const payInFull = data.get("payInFull") === "on";
+    const amountNaira = Number(data.get("amount") || 0);
+    const method = String(data.get("method") || "cash") as "cash" | "pos" | "offline" | "bank_transfer";
+    setRecordBusy(true);
+    try {
+      await db.orders.recordPayment(order.id, {
+        payInFull,
+        amountKobo: payInFull ? undefined : nairaToKobo(amountNaira),
+        method,
+        transactionNumber: String(data.get("ref") || "").trim() || undefined,
+        notifyClient: data.get("notify") === "on",
+      });
+      toast.success(payInFull ? "Marked paid in full — payments & analytics updated." : "Payment recorded.");
+      form.reset();
+      await Promise.all([reloadOrder(), reloadPayments(), reloadProd(), reloadItems()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not record payment.");
+    } finally {
+      setRecordBusy(false);
+    }
+  }
+
   if (loading && !order) return <PageLoading />;
   if (!order) return <p className="p-8">Order not found.</p>;
 
@@ -147,6 +204,10 @@ export default function StudioOrderDetail() {
         onRefresh={() => Promise.all([reloadOrder(), reloadProd(), reloadItems(), reloadPayments()])}
         actions={
           <div className="flex flex-wrap gap-2">
+            <StatusBadge
+              label={orderSourceLabel(order.source)}
+              tone={isKeyedInOrder(order.source) ? "gold" : "muted"}
+            />
             {order.priceOnRequest ? (
               <StatusBadge label="Request for price" tone="warn" />
             ) : null}
@@ -191,6 +252,113 @@ export default function StudioOrderDetail() {
           Balance {formatNaira(balanceKobo)} still due — collect before marking ready, dispatched, or delivered.
           Minimum booked so far should be at least {formatNaira(order.depositKobo || 0)} (70%+).
         </p>
+      ) : null}
+
+      {balanceKobo > 0 && order.totalKobo > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SectionCard title="Request balance from client">
+            <p className="mb-3 text-sm text-muted">
+              Email and/or WhatsApp a pay link for {formatNaira(balanceKobo)}. Client can pay by Paystack or
+              transfer; finance still confirms transfers.
+            </p>
+            <form className="grid gap-3" onSubmit={(event) => void requestBalance(event)}>
+              <Field label="Channel">
+                <select name="channel" defaultValue="both" className={inputClass} disabled={balanceBusy}>
+                  <option value="both">Email + WhatsApp</option>
+                  <option value="email">Email only</option>
+                  <option value="whatsapp">WhatsApp only</option>
+                </select>
+              </Field>
+              <Field label="Note (optional)">
+                <input
+                  name="message"
+                  className={inputClass}
+                  placeholder="e.g. Garment is almost ready — please settle the balance"
+                  disabled={balanceBusy}
+                />
+              </Field>
+              <OsButton type="submit" variant="gold" loading={balanceBusy} loadingText="Sending…">
+                Send balance request
+              </OsButton>
+            </form>
+            {balanceLinks ? (
+              <div className="mt-4 space-y-1 break-all rounded-xl border border-line bg-paper/50 p-3 text-xs">
+                <p>
+                  Pay:{" "}
+                  <a href={balanceLinks.payUrl} className="underline" target="_blank" rel="noreferrer">
+                    {balanceLinks.payUrl}
+                  </a>
+                </p>
+                <a href={balanceLinks.whatsappUrl} className="inline-block underline" target="_blank" rel="noreferrer">
+                  Open WhatsApp again
+                </a>
+              </div>
+            ) : null}
+          </SectionCard>
+
+          <SectionCard title="Record offline payment">
+            <p className="mb-3 text-sm text-muted">
+              Client paid cash, POS, or transfer outside the site — book it here so Payments, Analytics, Orders,
+              and the client ledger stay in sync.
+            </p>
+            <form className="grid gap-3" onSubmit={(event) => void recordOfflinePayment(event)}>
+              <label className="flex items-center gap-2 text-sm">
+                <input name="payInFull" type="checkbox" defaultChecked />
+                Mark paid in full ({formatNaira(balanceKobo)})
+              </label>
+              <Field label="Or partial amount (₦)">
+                <input
+                  name="amount"
+                  type="number"
+                  min={1}
+                  step={1}
+                  className={inputClass}
+                  placeholder={String(Math.round(balanceKobo / 100))}
+                  disabled={recordBusy}
+                />
+              </Field>
+              <Field label="Method">
+                <select name="method" defaultValue="cash" className={inputClass} disabled={recordBusy}>
+                  <option value="cash">Cash</option>
+                  <option value="pos">POS</option>
+                  <option value="bank_transfer">Bank transfer (already received)</option>
+                  <option value="offline">Offline / other</option>
+                </select>
+              </Field>
+              <Field label="Reference (optional)">
+                <input name="ref" className={inputClass} placeholder="Slip / txn ref" disabled={recordBusy} />
+              </Field>
+              <label className="flex items-center gap-2 text-sm">
+                <input name="notify" type="checkbox" defaultChecked />
+                Email client a payment receipt
+              </label>
+              <OsButton type="submit" loading={recordBusy} loadingText="Booking…">
+                Book payment
+              </OsButton>
+            </form>
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {(payments ?? []).length ? (
+        <SectionCard title="Payment history">
+          <ul className="divide-y divide-line text-sm">
+            {(payments ?? []).map((payment) => (
+              <li key={payment.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <div>
+                  <p className="font-medium text-ink">
+                    {formatNaira(payment.amountKobo)} · {payment.method.replaceAll("_", " ")} · {payment.type}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {formatWhen(payment.submittedAt)}
+                    {payment.transactionNumber ? ` · ${payment.transactionNumber}` : ""}
+                  </p>
+                </div>
+                <StatusBadge label={statusLabel(payment.status)} tone={statusTone(payment.status)} />
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
       ) : null}
 
       {awaitingBank.length ? (
