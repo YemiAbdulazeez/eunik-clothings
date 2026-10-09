@@ -12,5 +12,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Offline house-file unit tests must not pick up .env.local API URL.
+    env: {
+      VITE_API_URL: "",
+    },
   },
 });
