@@ -53,7 +53,9 @@ export default function AtelierBench() {
     const next = !clocked;
     setClockBusy(true);
     try {
-      await db.attendance.clock(next ? "in" : "out");
+      const { getCurrentPosition } = await import("@/lib/geo");
+      const geo = await getCurrentPosition();
+      await db.attendance.clock(next ? "in" : "out", geo);
       await attendanceQ.reload();
       toast.success(next ? "Clocked in on the floor." : "Clocked out.");
     } catch (error) {

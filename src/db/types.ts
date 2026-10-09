@@ -35,7 +35,19 @@ export type NavSection =
   | "fittings"
   | "appointments"
   | "attendance"
+  | "attendance-analytics"
+  | "daily-report"
+  | "weekly-review"
   | "profile";
+
+export type WorkSiteKey = "workstation" | "studio";
+
+export type WorkSitePin = {
+  label: string;
+  lat: number | null;
+  lng: number | null;
+  radiusM: number;
+};
 
 export type ProductionStage =
   | "quote_accepted"
@@ -65,6 +77,7 @@ export type PaymentStatus =
 
 export type OrderKind = "ready_to_wear" | "made_to_measure" | "bespoke" | "alteration";
 export type OrderStatus =
+  | "draft"
   | "pending_payment"
   | "awaiting_transfer"
   | "confirmed"
@@ -94,6 +107,8 @@ export type User = {
   emergencyPhone?: string;
   preferredFit?: string;
   notes?: string;
+  /** Assigned house site for geotagged attendance. */
+  workSite?: WorkSiteKey;
   mustChangePassword?: boolean;
   suspendedAt?: string | null;
   navSections?: NavSection[];
@@ -360,6 +375,66 @@ export type AttendanceEvent = {
   type: "in" | "out";
   at: string;
   note?: string;
+  userName?: string;
+  lat?: number;
+  lng?: number;
+  accuracyM?: number;
+  geoStatus?: string;
+  workSite?: WorkSiteKey;
+  distanceM?: number;
+  withinGeofence?: boolean;
+};
+
+export type ProductionItemType = {
+  id: string;
+  slug: string;
+  label: string;
+  sortOrder: number;
+  groupKey: string;
+};
+
+export type DailyReportLine = {
+  itemTypeId: string;
+  slug?: string;
+  label?: string;
+  groupKey?: string;
+  qty: number;
+};
+
+export type DailyReport = {
+  id: string;
+  userId: string;
+  workDate: string;
+  notes?: string;
+  lines: DailyReportLine[];
+  updatedAt?: string;
+};
+
+export type AttendanceRankingRow = {
+  userId: string;
+  name: string;
+  role: string;
+  workSite?: string | null;
+  hours: number;
+  daysPresent: number;
+  punches: number;
+  incompletePairs: number;
+  geofencePct: number | null;
+  clockedInNow: boolean;
+  score: number;
+};
+
+export type WeeklyReviewRow = {
+  userId: string;
+  name: string;
+  role: string;
+  workSite?: string | null;
+  hours: number;
+  daysReported: number;
+  clockedDays: number;
+  missingReportWarning: boolean;
+  totalPieces: number;
+  pieces: { slug: string; label: string; groupKey: string; qty: number }[];
 };
 
 export type TicketReply = {
@@ -452,6 +527,11 @@ export type Settings = {
   paystackEnabled: boolean;
   pickupLocation: string;
   aboutJoinLine: string;
+  /** Super-admin only — not on public settings. */
+  workSites?: {
+    workstation: WorkSitePin;
+    studio: WorkSitePin;
+  };
   bank: {
     bankName: string;
     accountName: string;

@@ -750,13 +750,17 @@ export const httpPeople = {
     role: string;
     department?: string;
     jobTitle?: string;
+    workSite: "workstation" | "studio";
   }) {
     return api<{ id: string; tempPassword: string; emailSent: boolean }>("/studio/people/hire", {
       method: "POST",
       body: payload,
     });
   },
-  async updateStaff(id: string, patch: { role?: string; department?: string; jobTitle?: string }) {
+  async updateStaff(
+    id: string,
+    patch: { role?: string; department?: string; jobTitle?: string; workSite?: "workstation" | "studio" },
+  ) {
     const data = await api<{ staff: unknown }>(`/studio/people/staff/${id}`, {
       method: "PATCH",
       body: patch,
@@ -906,11 +910,63 @@ export const httpReviews = {
 
 export const httpAttendance = {
   async list() {
-    const data = await api<{ attendance: unknown[] }>("/studio/attendance");
-    return data.attendance;
+    const data = await api<{
+      attendance: unknown[];
+      myWorkSite?: string | null;
+      sites?: unknown;
+    }>("/studio/attendance");
+    return data;
   },
-  async clock(type: "in" | "out", note?: string) {
-    await api("/studio/attendance", { method: "POST", body: { type, note } });
+  async clock(payload: {
+    type: "in" | "out";
+    lat: number;
+    lng: number;
+    accuracyM?: number;
+    note?: string;
+  }) {
+    return api<{ punch: unknown }>("/studio/attendance", { method: "POST", body: payload });
+  },
+  async analytics(range = "7d", site = "all") {
+    const data = await api<{ report: unknown; range: string; site: string }>(
+      `/studio/attendance/analytics?range=${encodeURIComponent(range)}&site=${encodeURIComponent(site)}`,
+    );
+    return data;
+  },
+};
+
+export const httpDailyReports = {
+  async types() {
+    const data = await api<{ types: unknown[] }>("/studio/daily-reports/types");
+    return data.types;
+  },
+  async mine(date: string) {
+    const data = await api<{ report: unknown | null; workDate: string }>(
+      `/studio/daily-reports/mine?date=${encodeURIComponent(date)}`,
+    );
+    return data;
+  },
+  async save(payload: {
+    workDate: string;
+    notes?: string;
+    lines: { itemTypeId: string; qty: number }[];
+  }) {
+    const data = await api<{ report: unknown }>("/studio/daily-reports/mine", {
+      method: "PUT",
+      body: payload,
+    });
+    return data.report;
+  },
+  async weekly(weekStart?: string) {
+    const q = weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : "";
+    const data = await api<{ worksheet: unknown }>(`/studio/daily-reports/weekly${q}`);
+    return data.worksheet;
+  },
+  async lockWeek(weekStart: string, lock: boolean) {
+    const data = await api<{ worksheet: unknown }>("/studio/daily-reports/weekly/lock", {
+      method: "POST",
+      body: { weekStart, lock },
+    });
+    return data.worksheet;
   },
 };
 

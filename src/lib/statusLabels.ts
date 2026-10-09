@@ -7,6 +7,7 @@ import type { OrderStatus, PaymentStatus, ProductionStage, Role } from "@/db/typ
 
 /** Client-facing order status — short and clear */
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  draft: "Draft",
   pending_payment: "Waiting for payment",
   awaiting_transfer: "Waiting for bank check",
   confirmed: "Confirmed",

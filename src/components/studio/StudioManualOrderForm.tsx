@@ -84,13 +84,8 @@ export default function StudioManualOrderForm({ open, onClose, onCreated }: Prop
     });
   }
 
-  async function submit() {
-    if (busy) return;
-    if (!customerName.trim() || !customerEmail.trim()) {
-      toast.error("Client name and email are required.");
-      return;
-    }
-    const payloadLines = lines
+  function buildPayloadLines() {
+    return lines
       .map((line) => {
         const unitKobo = Math.max(0, Math.round(Number(line.unitNaira || 0) * 100));
         if (line.mode === "catalogue") {
@@ -121,6 +116,15 @@ export default function StudioManualOrderForm({ open, onClose, onCreated }: Prop
       unitKobo: number;
       kind: "rtw" | "mtm";
     }[];
+  }
+
+  async function submit(asDraft: boolean) {
+    if (busy) return;
+    if (!customerName.trim() || !customerEmail.trim()) {
+      toast.error("Client name and email are required.");
+      return;
+    }
+    const payloadLines = buildPayloadLines();
 
     if (!payloadLines.length) {
       toast.error("Add at least one catalogue or custom line.");
@@ -129,6 +133,7 @@ export default function StudioManualOrderForm({ open, onClose, onCreated }: Prop
 
     try {
       setBusy(true);
+      const paidKobo = Math.max(0, Math.round(Number(paidNaira || 0) * 100));
       const result = await db.orders.createManual({
         customer: {
           name: customerName.trim(),
@@ -140,25 +145,35 @@ export default function StudioManualOrderForm({ open, onClose, onCreated }: Prop
         fulfillment,
         address: fulfillment === "delivery" ? address.trim() || undefined : undefined,
         notes: notes.trim() || undefined,
-        status: status as
-          | "pending_payment"
-          | "awaiting_transfer"
-          | "confirmed"
-          | "processing"
-          | "production",
-        paidKobo: Math.max(0, Math.round(Number(paidNaira || 0) * 100)),
-        paymentMethod: Math.round(Number(paidNaira || 0) * 100) > 0 ? paymentMethod : undefined,
-        paymentRef: paymentRef.trim() || undefined,
+        status: asDraft
+          ? "draft"
+          : (status as
+              | "pending_payment"
+              | "awaiting_transfer"
+              | "confirmed"
+              | "processing"
+              | "production"),
+        paidKobo: asDraft ? 0 : paidKobo,
+        paymentMethod: !asDraft && paidKobo > 0 ? paymentMethod : undefined,
+        paymentRef: asDraft ? undefined : paymentRef.trim() || undefined,
         shippingKobo: 0,
-        notifyClient,
+        notifyClient: asDraft ? false : notifyClient,
         lines: payloadLines,
       });
-      toast.success(`Order ${result.orderNumber} saved.`);
+      toast.success(
+        asDraft ? `Draft ${result.orderNumber} saved.` : `Order ${result.orderNumber} saved.`,
+      );
       onCreated();
       onClose();
       navigate(`/studio/orders/${result.orderId}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create the order.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : asDraft
+            ? "Could not save the draft."
+            : "Could not create the order.",
+      );
     } finally {
       setBusy(false);
     }
@@ -423,10 +438,13 @@ export default function StudioManualOrderForm({ open, onClose, onCreated }: Prop
       </label>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <OsButton loading={busy} loadingText="Saving…" onClick={() => void submit()}>
+        <OsButton variant="ghost" loading={busy} loadingText="Saving…" onClick={() => void submit(true)}>
+          Save as draft
+        </OsButton>
+        <OsButton loading={busy} loadingText="Saving…" onClick={() => void submit(false)}>
           Create order
         </OsButton>
-        <OsButton variant="ghost" onClick={onClose}>
+        <OsButton variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </OsButton>
       </div>

@@ -36,7 +36,7 @@ export function statusTone(status: string): "muted" | "gold" | "ok" | "warn" | "
   ) {
     return "warn";
   }
-  if (["rejected", "failed", "cancelled", "out", "declined", "expired"].includes(status)) return "muted";
+  if (["rejected", "failed", "cancelled", "draft", "out", "declined", "expired"].includes(status)) return "muted";
   if (["production", "sewing", "cutting", "finishing", "first_fitting", "alterations"].includes(status)) return "gold";
   return "ink";
 }

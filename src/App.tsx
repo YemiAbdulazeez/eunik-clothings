@@ -44,7 +44,11 @@ import SearchPage from "./pages/Search";
 import Shop from "./pages/Shop";
 import StudioAnalytics from "./pages/studio/StudioAnalytics";
 import StudioAttendance from "./pages/studio/StudioAttendance";
+import StudioAttendanceAnalytics from "./pages/studio/StudioAttendanceAnalytics";
+import StudioDailyReport from "./pages/studio/StudioDailyReport";
+import StudioWeeklyReview from "./pages/studio/StudioWeeklyReview";
 import StudioCollections from "./pages/studio/StudioCollections";
+import AtelierDailyReport from "./pages/atelier/AtelierDailyReport";
 import StudioContent from "./pages/studio/StudioContent";
 import StudioCustom from "./pages/studio/StudioCustom";
 import StudioCustomer from "./pages/studio/StudioCustomer";
@@ -149,6 +153,9 @@ export default function App() {
           <Route path="/studio/people" element={<StudioPeople />} />
           <Route path="/studio/appointments" element={<AtelierAppointments />} />
           <Route path="/studio/attendance" element={<StudioAttendance />} />
+          <Route path="/studio/attendance-analytics" element={<StudioAttendanceAnalytics />} />
+          <Route path="/studio/daily-report" element={<StudioDailyReport />} />
+          <Route path="/studio/weekly-review" element={<StudioWeeklyReview />} />
           <Route path="/studio/profile" element={<StudioProfile />} />
           <Route path="/studio/settings" element={<StudioSettings />} />
         </Route>
@@ -159,6 +166,7 @@ export default function App() {
           <Route path="/atelier/fittings" element={<AtelierFittings />} />
           <Route path="/atelier/appointments" element={<AtelierAppointments />} />
           <Route path="/atelier/attendance" element={<AtelierAttendance />} />
+          <Route path="/atelier/daily-report" element={<AtelierDailyReport />} />
           <Route path="/atelier/profile" element={<AtelierProfile />} />
         </Route>
 

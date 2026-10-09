@@ -12,7 +12,10 @@ export default function StudioSettings() {
   const navigate = useNavigate();
   const { user } = useSession();
   const isPrincipal = user?.role === "super_admin";
-  const { data: settings, reload, loading } = useAsync(() => db.settings.get(), []);
+  const { data: settings, reload, loading } = useAsync(
+    () => (isPrincipal ? db.settings.getHouse() : db.settings.get()),
+    [isPrincipal],
+  );
   const { data: logs, reload: reloadLogs } = useAsync(
     () => (isPrincipal || user?.role === "manager" ? db.audit.list() : Promise.resolve([])),
     [user?.role],
@@ -48,6 +51,20 @@ export default function StudioSettings() {
         freeShippingKobo: nairaToKobo(freeShippingNaira),
         demoMode: data.get("demoMode") === "on",
         paystackEnabled: data.get("paystackEnabled") === "on",
+        workSites: {
+          workstation: {
+            label: String(data.get("wsLabel") || "Workstation"),
+            lat: data.get("wsLat") === "" ? null : Number(data.get("wsLat")),
+            lng: data.get("wsLng") === "" ? null : Number(data.get("wsLng")),
+            radiusM: Math.max(1, Number(data.get("wsRadius") || 100)),
+          },
+          studio: {
+            label: String(data.get("stLabel") || "Studio"),
+            lat: data.get("stLat") === "" ? null : Number(data.get("stLat")),
+            lng: data.get("stLng") === "" ? null : Number(data.get("stLng")),
+            radiusM: Math.max(1, Number(data.get("stRadius") || 100)),
+          },
+        },
         bank: {
           bankName: String(data.get("bankName") ?? ""),
           accountName: String(data.get("accountName") ?? ""),
@@ -169,6 +186,92 @@ export default function StudioSettings() {
               <input type="checkbox" name="demoMode" defaultChecked={settings.demoMode} />
               Demo mode (presentation switcher / banners)
             </label>
+          </SectionCard>
+
+          <SectionCard title="Work sites (attendance geofence)">
+            <p className="mb-4 text-sm text-muted">
+              Staff clock in/out must be within the radius of their assigned site. Default radius is 100m.
+            </p>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3 rounded-xl border border-line p-4">
+                <p className="font-medium text-ink">Workstation</p>
+                <Field label="Label">
+                  <input
+                    name="wsLabel"
+                    defaultValue={settings.workSites?.workstation.label ?? "Workstation"}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Latitude">
+                  <input
+                    name="wsLat"
+                    type="number"
+                    step="any"
+                    defaultValue={settings.workSites?.workstation.lat ?? ""}
+                    className={inputClass}
+                    placeholder="e.g. 7.3775"
+                  />
+                </Field>
+                <Field label="Longitude">
+                  <input
+                    name="wsLng"
+                    type="number"
+                    step="any"
+                    defaultValue={settings.workSites?.workstation.lng ?? ""}
+                    className={inputClass}
+                    placeholder="e.g. 3.9470"
+                  />
+                </Field>
+                <Field label="Radius (metres)">
+                  <input
+                    name="wsRadius"
+                    type="number"
+                    min={1}
+                    defaultValue={settings.workSites?.workstation.radiusM ?? 100}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+              <div className="space-y-3 rounded-xl border border-line p-4">
+                <p className="font-medium text-ink">Studio</p>
+                <Field label="Label">
+                  <input
+                    name="stLabel"
+                    defaultValue={settings.workSites?.studio.label ?? "Studio"}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Latitude">
+                  <input
+                    name="stLat"
+                    type="number"
+                    step="any"
+                    defaultValue={settings.workSites?.studio.lat ?? ""}
+                    className={inputClass}
+                    placeholder="e.g. 7.3775"
+                  />
+                </Field>
+                <Field label="Longitude">
+                  <input
+                    name="stLng"
+                    type="number"
+                    step="any"
+                    defaultValue={settings.workSites?.studio.lng ?? ""}
+                    className={inputClass}
+                    placeholder="e.g. 3.9470"
+                  />
+                </Field>
+                <Field label="Radius (metres)">
+                  <input
+                    name="stRadius"
+                    type="number"
+                    min={1}
+                    defaultValue={settings.workSites?.studio.radiusM ?? 100}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+            </div>
           </SectionCard>
 
           <OsButton type="submit" loading={busy} loadingText="Saving…">

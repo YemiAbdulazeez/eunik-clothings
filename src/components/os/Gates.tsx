@@ -65,6 +65,9 @@ const studioItems = [
   { to: "/studio/people", label: "Staff", icon: UserCog },
   { to: "/studio/appointments", label: "Bookings", icon: Calendar },
   { to: "/studio/attendance", label: "Attendance", icon: Clock },
+  { to: "/studio/attendance-analytics", label: "Attendance analytics", icon: BarChart3 },
+  { to: "/studio/daily-report", label: "Daily report", icon: ClipboardList },
+  { to: "/studio/weekly-review", label: "Weekly review", icon: FileText },
   { to: "/studio/profile", label: "Profile", icon: User },
   { to: "/studio/settings", label: "Settings", icon: Settings },
 ];
@@ -75,6 +78,7 @@ const atelierItems = [
   { to: "/atelier/fittings", label: "Fittings", icon: Ruler },
   { to: "/atelier/appointments", label: "Bookings", icon: Calendar },
   { to: "/atelier/attendance", label: "Attendance", icon: Clock },
+  { to: "/atelier/daily-report", label: "Daily report", icon: ClipboardList },
   { to: "/atelier/profile", label: "Profile", icon: User },
 ];
 

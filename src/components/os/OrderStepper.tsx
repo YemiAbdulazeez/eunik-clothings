@@ -111,6 +111,7 @@ function resolveSteps(status: OrderStatus, stage: ProductionStage | null | undef
 }
 
 export function trackingHeadline(status: OrderStatus, stage?: ProductionStage | null, kind = "ready_to_wear") {
+  if (status === "draft") return { title: "Draft", detail: "Saved offline key-in — not activated yet." };
   if (status === "cancelled") return { title: "Order cancelled", detail: "This order was cancelled by the house or the client." };
   const { steps, current } = resolveSteps(status, stage, kind);
   const step = steps[current] ?? steps[0];
@@ -131,6 +132,14 @@ export default function OrderStepper({
   compact?: boolean;
   createdAt?: string;
 }) {
+  if (status === "draft") {
+    return (
+      <div className="rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink">
+        Draft offline order — not on the live pipeline yet.
+      </div>
+    );
+  }
+
   if (status === "cancelled") {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

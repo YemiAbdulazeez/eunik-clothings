@@ -34,6 +34,7 @@ import {
   httpTickets,
   httpReviews,
   httpAttendance,
+  httpDailyReports,
   httpFittings,
   httpAnalytics,
 } from "../api/http";
@@ -1460,7 +1461,9 @@ export const db = {
       if (HTTP_ENABLED) return (await httpOrders.list()) as Order[];
       await delay();
       const user = requireUser();
-      return getState().orders.filter((item) => item.customerId === user.id);
+      return getState().orders.filter(
+        (item) => item.customerId === user.id && item.status !== "draft",
+      );
     },
     async listAll() {
       if (HTTP_ENABLED) return (await httpOrders.list()) as Order[];
@@ -1641,7 +1644,10 @@ export const db = {
         const subtotal = resolved.reduce((s, l) => s + l.unitKobo * l.qty, 0);
         const shippingKobo = 0;
         const totalKobo = subtotal + shippingKobo;
-        const paidKobo = Math.max(0, Math.min(totalKobo, input.paidKobo ?? 0));
+        const isDraft = input.status === "draft";
+        const paidKobo = isDraft
+          ? 0
+          : Math.max(0, Math.min(totalKobo, input.paidKobo ?? 0));
         const number = allocateOrderNumber(draft);
         const id = `order_${number.replace(/\W/g, "_")}`;
         const depositKobo = Math.ceil((totalKobo * (draft.settings.depositPercent || 70)) / 100);
@@ -1654,7 +1660,7 @@ export const db = {
           customerEmail: input.customer.email.trim().toLowerCase(),
           customerPhone: input.customer.phone ?? "",
           kind: input.kind ?? "ready_to_wear",
-          status: input.status ?? "confirmed",
+          status: isDraft ? "draft" : input.status ?? "confirmed",
           productId: resolved[0]?.product?.id,
           sku: resolved[0]?.sku,
           name:
@@ -1688,7 +1694,7 @@ export const db = {
             unitKobo: line.unitKobo,
           });
         }
-        if (paidKobo > 0) {
+        if (!isDraft && paidKobo > 0) {
           draft.payments.unshift({
             id: crypto.randomUUID(),
             orderId: id,
@@ -2959,21 +2965,34 @@ export const db = {
           | "department"
           | "jobTitle"
           | "emergencyPhone"
+          | "workSite"
           | "role"
           | "navSections"
         >
       >,
     ) {
       if (HTTP_ENABLED) {
-        if (patch.role || patch.department !== undefined || patch.jobTitle !== undefined) {
+        if (
+          patch.role ||
+          patch.department !== undefined ||
+          patch.jobTitle !== undefined ||
+          patch.workSite !== undefined
+        ) {
           await httpPeople.updateStaff(id, {
             role: patch.role,
             department: patch.department,
             jobTitle: patch.jobTitle,
+            workSite: patch.workSite,
           });
         }
         if (patch.navSections) await httpPeople.setNav(id, patch.navSections as string[]);
-        if (patch.role || patch.navSections || patch.department !== undefined || patch.jobTitle !== undefined) {
+        if (
+          patch.role ||
+          patch.navSections ||
+          patch.department !== undefined ||
+          patch.jobTitle !== undefined ||
+          patch.workSite !== undefined
+        ) {
           const staff = (await httpPeople.listStaff()) as PublicUser[];
           const found = staff.find((item) => item.id === id);
           if (found) return found;
@@ -3009,6 +3028,7 @@ export const db = {
       role: Role;
       department?: string;
       jobTitle?: string;
+      workSite: "workstation" | "studio";
       gender?: Gender;
       address?: string;
       birthDay?: number;
@@ -3025,6 +3045,7 @@ export const db = {
           role: input.role,
           department: input.department,
           jobTitle: input.jobTitle,
+          workSite: input.workSite,
         });
         if (input.navSections?.length) {
           await httpPeople.setNav(hired.id, input.navSections);
@@ -3068,6 +3089,7 @@ export const db = {
         birthMonth: input.birthMonth,
         department: input.department,
         jobTitle: input.jobTitle,
+        workSite: input.workSite,
         emergencyPhone: input.emergencyPhone,
         mustChangePassword: true,
         navSections: input.navSections?.length ? input.navSections : defaultNav(input.role),
@@ -3215,10 +3237,20 @@ export const db = {
   attendance: {
     async list() {
       if (HTTP_ENABLED) {
-        const user = requireUser();
-        const rows = (await httpAttendance.list()) as AttendanceEvent[];
-        if (["super_admin", "manager"].includes(user.role)) return rows;
-        return rows.filter((item) => item.userId === user.id);
+        const session = readSession();
+        if (!session) throw new Error("Session expired. Please sign in again.");
+        const data = await httpAttendance.list();
+        const rows = data.attendance as AttendanceEvent[];
+        const filtered = ["super_admin", "manager"].includes(session.role)
+          ? rows
+          : rows.filter((item) => item.userId === session.userId);
+        return Object.assign(filtered, {
+          myWorkSite: data.myWorkSite ?? null,
+          sites: data.sites,
+        }) as AttendanceEvent[] & {
+          myWorkSite?: string | null;
+          sites?: unknown;
+        };
       }
       await delay();
       const user = requireUser();
@@ -3230,15 +3262,38 @@ export const db = {
       if (["super_admin", "manager"].includes(user.role)) return rows;
       return rows.filter((item) => item.userId === user.id);
     },
-    async clock(type: "in" | "out", note?: string) {
+    async clock(
+      type: "in" | "out",
+      noteOrGeo?:
+        | string
+        | { lat: number; lng: number; accuracyM?: number; note?: string },
+    ) {
+      const geo =
+        typeof noteOrGeo === "object" && noteOrGeo
+          ? noteOrGeo
+          : undefined;
+      const note = typeof noteOrGeo === "string" ? noteOrGeo : geo?.note;
       if (HTTP_ENABLED) {
-        await httpAttendance.clock(type, note);
-        return {
+        const session = readSession();
+        if (!session) throw new Error("Session expired. Please sign in again.");
+        if (geo?.lat == null || geo?.lng == null) {
+          throw new Error("Location is required to clock in or out. Enable GPS and try again.");
+        }
+        const { punch } = await httpAttendance.clock({
+          type,
+          lat: geo.lat,
+          lng: geo.lng,
+          accuracyM: geo.accuracyM,
+          note,
+        });
+        return (punch as AttendanceEvent) ?? {
           id: crypto.randomUUID(),
-          userId: requireUser().id,
+          userId: session.userId,
           type,
           at: nowIso(),
           note,
+          lat: geo.lat,
+          lng: geo.lng,
         };
       }
       await delay();
@@ -3250,16 +3305,56 @@ export const db = {
         type,
         at: nowIso(),
         note,
+        lat: geo?.lat,
+        lng: geo?.lng,
+        accuracyM: geo?.accuracyM,
+        workSite: user.workSite,
+        withinGeofence: true,
       };
       mutate((draft) => {
         draft.attendance.unshift(row);
       });
       return row;
     },
+    async analytics(range = "7d", site = "all") {
+      if (HTTP_ENABLED) return httpAttendance.analytics(range, site);
+      return { report: { summary: { staffCounted: 0, presentToday: 0, totalHours: 0, punches: 0 }, ranking: [] }, range, site };
+    },
+  },
+  dailyReports: {
+    async types() {
+      if (HTTP_ENABLED) return httpDailyReports.types();
+      return [];
+    },
+    async mine(date: string) {
+      if (HTTP_ENABLED) return httpDailyReports.mine(date);
+      return { report: null, workDate: date };
+    },
+    async save(payload: {
+      workDate: string;
+      notes?: string;
+      lines: { itemTypeId: string; qty: number }[];
+    }) {
+      if (HTTP_ENABLED) return httpDailyReports.save(payload);
+      throw new Error("Daily reports need the live API.");
+    },
+    async weekly(weekStart?: string) {
+      if (HTTP_ENABLED) return httpDailyReports.weekly(weekStart);
+      throw new Error("Weekly review needs the live API.");
+    },
+    async lockWeek(weekStart: string, lock: boolean) {
+      if (HTTP_ENABLED) return httpDailyReports.lockWeek(weekStart, lock);
+      throw new Error("Weekly review needs the live API.");
+    },
   },
   settings: {
     async get() {
       if (HTTP_ENABLED) return (await httpSettings.get()) as Settings;
+      await delay(40);
+      return getState().settings;
+    },
+    async getHouse() {
+      if (HTTP_ENABLED) return (await httpStudioSettings.get()) as Settings;
       await delay(40);
       return getState().settings;
     },
@@ -3274,6 +3369,9 @@ export const db = {
           ...draft.settings,
           ...patch,
           bank: { ...draft.settings.bank, ...(patch.bank ?? {}) },
+          workSites: patch.workSites
+            ? { ...draft.settings.workSites, ...patch.workSites }
+            : draft.settings.workSites,
         };
       });
       return getState().settings;

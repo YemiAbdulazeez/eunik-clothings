@@ -60,6 +60,7 @@ function NavTickGrid({
 function StaffAccessEditor({ person, onDone }: { person: PublicUser; onDone: () => void }) {
   const [role, setRole] = useState<Role>(person.role);
   const [nav, setNav] = useState<NavSection[]>(assignedNav(person));
+  const [workSite, setWorkSite] = useState<"workstation" | "studio">(person.workSite ?? "studio");
   const locked = person.role === "super_admin";
 
   async function save() {
@@ -69,11 +70,12 @@ function StaffAccessEditor({ person, onDone }: { person: PublicUser; onDone: () 
       return;
     }
     try {
-      if (role !== person.role) {
-        await db.people.updateUser(person.id, { role, navSections: nav.includes("profile") ? nav : [...nav, "profile"] });
-      } else {
-        await db.people.setNav(person.id, nav);
-      }
+      const nextNav: NavSection[] = nav.includes("profile") ? nav : [...nav, "profile"];
+      await db.people.updateUser(person.id, {
+        role,
+        navSections: nextNav,
+        workSite,
+      });
       toast.success("Access saved.");
       onDone();
     } catch (error) {
@@ -102,6 +104,16 @@ function StaffAccessEditor({ person, onDone }: { person: PublicUser; onDone: () 
               {roleLabel(item)}
             </option>
           ))}
+        </select>
+      </Field>
+      <Field label="Work site">
+        <select
+          className={inputClass}
+          value={workSite}
+          onChange={(event) => setWorkSite(event.target.value as "workstation" | "studio")}
+        >
+          <option value="workstation">Workstation</option>
+          <option value="studio">Studio</option>
         </select>
       </Field>
       <NavTickGrid value={nav} onChange={setNav} />
@@ -203,6 +215,7 @@ export default function StudioPeople() {
         role: hireRole,
         department: String(data.get("department")),
         jobTitle: String(data.get("jobTitle")),
+        workSite: String(data.get("workSite") || "studio") as "workstation" | "studio",
         gender: String(data.get("gender")) as "male" | "female" | "other",
         emergencyPhone: String(data.get("emergencyPhone")),
         navSections: hireNav.includes("profile") ? hireNav : [...hireNav, "profile"],
@@ -281,6 +294,12 @@ export default function StudioPeople() {
             <Field label="Job title">
               <input name="jobTitle" className={inputClass} />
             </Field>
+            <Field label="Work site">
+              <select name="workSite" required defaultValue="studio" className={inputClass}>
+                <option value="workstation">Workstation</option>
+                <option value="studio">Studio</option>
+              </select>
+            </Field>
             <Field label="Gender">
               <select name="gender" className={inputClass}>
                 <option value="male">Male</option>
@@ -314,6 +333,7 @@ export default function StudioPeople() {
               <tr className="border-b border-line text-muted">
                 <th className="py-3">Name</th>
                 <th>Role</th>
+                <th>Site</th>
                 <th>Department</th>
                 <th>Phone</th>
                 <th>Status</th>
@@ -327,6 +347,13 @@ export default function StudioPeople() {
                   <tr className="border-b border-line/70">
                     <td className="py-3 text-ink">{person.name}</td>
                     <td className="capitalize">{roleLabel(person.role)}</td>
+                    <td>
+                      {person.workSite === "workstation"
+                        ? "Workstation"
+                        : person.workSite === "studio"
+                          ? "Studio"
+                          : "—"}
+                    </td>
                     <td>{person.department ?? "—"}</td>
                     <td>{person.phone}</td>
                     <td>
@@ -357,7 +384,7 @@ export default function StudioPeople() {
                   </tr>
                   {principal && editing === person.id ? (
                     <tr className="border-b border-line/70 bg-paper/60">
-                      <td colSpan={7} className="px-3 pb-3">
+                      <td colSpan={8} className="px-3 pb-3">
                         <StaffAccessEditor
                           person={person}
                           onDone={() => {

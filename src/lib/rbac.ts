@@ -28,6 +28,27 @@ export const NAV_CATALOG: NavCatalogItem[] = [
   { id: "events", label: "Events", hint: "Shows and fittings", path: "/studio/events", area: "studio" },
   { id: "people", label: "Staff", hint: "Hire and what they can open", path: "/studio/people", area: "studio" },
   { id: "attendance", label: "Attendance", hint: "Clock in and out", path: "/studio/attendance", area: "studio" },
+  {
+    id: "attendance-analytics",
+    label: "Attendance analytics",
+    hint: "Hours and ranking",
+    path: "/studio/attendance-analytics",
+    area: "studio",
+  },
+  {
+    id: "daily-report",
+    label: "Daily report",
+    hint: "Piece counts for the day",
+    path: "/studio/daily-report",
+    area: "studio",
+  },
+  {
+    id: "weekly-review",
+    label: "Weekly review",
+    hint: "Hours and pieces for payout",
+    path: "/studio/weekly-review",
+    area: "studio",
+  },
   { id: "appointments", label: "Bookings", hint: "Ibadan appointments", path: "/studio/appointments", area: "studio" },
   { id: "settings", label: "Settings", hint: "House settings", path: "/studio/settings", area: "studio" },
   { id: "bench", label: "My bench", hint: "Orders on your bench", path: "/atelier", area: "atelier" },
@@ -37,7 +58,15 @@ export const NAV_CATALOG: NavCatalogItem[] = [
 ];
 
 const ALL_STUDIO: NavSection[] = NAV_CATALOG.filter((item) => item.area === "studio").map((item) => item.id);
-const ALL_ATELIER: NavSection[] = ["bench", "queue", "fittings", "appointments", "attendance", "profile"];
+const ALL_ATELIER: NavSection[] = [
+  "bench",
+  "queue",
+  "fittings",
+  "appointments",
+  "attendance",
+  "daily-report",
+  "profile",
+];
 const STUDIO_CORE: NavSection[] = [
   "overview",
   "orders",
@@ -53,6 +82,10 @@ const STUDIO_CORE: NavSection[] = [
   "content",
   "events",
   "people",
+  "attendance",
+  "attendance-analytics",
+  "daily-report",
+  "weekly-review",
   "settings",
 ];
 const FLOOR_CORE: NavSection[] = ["bench", "queue", "fittings"];
@@ -61,10 +94,40 @@ export const DEFAULT_NAV: Record<Role, NavSection[]> = {
   client: [],
   super_admin: ALL_STUDIO,
   manager: ALL_STUDIO.filter((id) => id !== "people"),
-  desk: ["overview", "orders", "customers", "custom", "quotes", "appointments", "support", "attendance", "profile"],
-  designer: ["overview", "custom", "quotes", "production", "content", "events", "profile"],
+  desk: [
+    "overview",
+    "orders",
+    "customers",
+    "custom",
+    "quotes",
+    "appointments",
+    "support",
+    "attendance",
+    "daily-report",
+    "profile",
+  ],
+  designer: [
+    "overview",
+    "custom",
+    "quotes",
+    "production",
+    "content",
+    "events",
+    "attendance",
+    "daily-report",
+    "profile",
+  ],
   finance: ["overview", "orders", "payments", "analytics", "customers", "profile"],
-  content: ["overview", "products", "collections", "content", "events", "profile"],
+  content: [
+    "overview",
+    "products",
+    "collections",
+    "content",
+    "events",
+    "attendance",
+    "daily-report",
+    "profile",
+  ],
   tailor: ALL_ATELIER,
   cutter: ALL_ATELIER,
   qc: ALL_ATELIER,
@@ -120,6 +183,7 @@ export function canUseArea(user: PublicUser, area: NavArea): boolean {
 export function studioPathForSection(id: NavSection): string {
   if (id === "profile") return "/studio/profile";
   if (id === "attendance") return "/studio/attendance";
+  if (id === "daily-report") return "/studio/daily-report";
   if (id === "appointments") return "/studio/appointments";
   if (id === "bench") return "/atelier";
   return NAV_CATALOG.find((item) => item.id === id)?.path ?? "/studio";
@@ -128,6 +192,7 @@ export function studioPathForSection(id: NavSection): string {
 export function atelierPathForSection(id: NavSection): string {
   if (id === "profile") return "/atelier/profile";
   if (id === "attendance") return "/atelier/attendance";
+  if (id === "daily-report") return "/atelier/daily-report";
   if (id === "appointments") return "/atelier/appointments";
   if (id === "overview") return "/atelier";
   return NAV_CATALOG.find((item) => item.id === id)?.path ?? "/atelier";
@@ -206,6 +271,11 @@ export function postLoginPath(user: PublicUser, next?: string | null): string {
 
 export function sectionForPath(pathname: string): NavSection {
   if (pathname.startsWith("/atelier/profile") || pathname.startsWith("/studio/profile")) return "profile";
+  if (pathname.startsWith("/studio/attendance-analytics")) return "attendance-analytics";
+  if (pathname.startsWith("/atelier/daily-report") || pathname.startsWith("/studio/daily-report")) {
+    return "daily-report";
+  }
+  if (pathname.startsWith("/studio/weekly-review")) return "weekly-review";
   if (pathname.startsWith("/atelier/attendance") || pathname.startsWith("/studio/attendance")) return "attendance";
   if (pathname.startsWith("/atelier/appointments") || pathname.startsWith("/studio/appointments")) return "appointments";
   if (pathname === "/atelier" || pathname === "/atelier/") return "bench";

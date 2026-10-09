@@ -27,7 +27,15 @@ function displayStatus(order: Order): string {
   return order.status;
 }
 
-const STATUS_KIND_FILTERS = ["all", "production", "awaiting_transfer", "ready", "bespoke", "made_to_measure"] as const;
+const STATUS_KIND_FILTERS = [
+  "all",
+  "draft",
+  "production",
+  "awaiting_transfer",
+  "ready",
+  "bespoke",
+  "made_to_measure",
+] as const;
 
 export default function StudioOrders() {
   const { user } = useSession();
@@ -75,13 +83,22 @@ export default function StudioOrders() {
           onCreated={() => void reload()}
         />
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="All" value={String(orders?.length ?? 0)} />
+        <StatCard label="Drafts" value={String(orders?.filter((item) => item.status === "draft").length ?? 0)} />
         <StatCard label="In production" value={String(orders?.filter((item) => item.status === "production").length ?? 0)} />
         <StatCard label="Waiting for bank check" value={String(orders?.filter((item) => item.status === "awaiting_transfer").length ?? 0)} tone="gold" />
         <StatCard
           label="Balance due"
-          value={String(orders?.filter((item) => item.totalKobo > 0 && item.paidKobo < item.totalKobo && item.status !== "cancelled").length ?? 0)}
+          value={String(
+            orders?.filter(
+              (item) =>
+                item.totalKobo > 0 &&
+                item.paidKobo < item.totalKobo &&
+                item.status !== "cancelled" &&
+                item.status !== "draft",
+            ).length ?? 0,
+          )}
           tone="alert"
         />
       </div>

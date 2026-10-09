@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import OrderStepper from "@/components/os/OrderStepper";
 import { Field, OsButton, PageHeader, PageLoading, SectionCard, StatusBadge, StatCard, inputClass } from "@/components/os/ui";
@@ -25,6 +26,7 @@ function receiptSrc(payment: Payment) {
 }
 
 export default function StudioOrderDetail() {
+  const navigate = useNavigate();
   const { id = "" } = useParams();
   const { data: order, reload: reloadOrder, loading } = useAsync(() => db.orders.get(id), [id]);
   const { data: prod, reload: reloadProd } = useAsync(() => db.production.getByOrder(id), [id]);
@@ -198,6 +200,11 @@ export default function StudioOrderDetail() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <OsButton variant="ghost" onClick={() => navigate("/studio/orders")}>
+          <ArrowLeft className="h-4 w-4" /> Back to orders
+        </OsButton>
+      </div>
       <PageHeader
         title={order.number}
         subtitle={order.name}
@@ -208,6 +215,7 @@ export default function StudioOrderDetail() {
               label={orderSourceLabel(order.source)}
               tone={isKeyedInOrder(order.source) ? "gold" : "muted"}
             />
+            {order.status === "draft" ? <StatusBadge label="Draft" tone="muted" /> : null}
             {order.priceOnRequest ? (
               <StatusBadge label="Request for price" tone="warn" />
             ) : null}
@@ -228,12 +236,15 @@ export default function StudioOrderDetail() {
             <Link to="/studio/quotes" className="os-pill border border-line">
               Quotes
             </Link>
-            <Link to="/studio/orders" className="os-pill border border-line">
-              All orders
-            </Link>
           </div>
         }
       />
+      {order.status === "draft" ? (
+        <p className="rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink">
+          This is a draft offline order. It is not active yet — set a live status below (e.g. Confirmed) when
+          you are ready to run Create-order workflows.
+        </p>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-4">
         <StatCard
           label="Total"
